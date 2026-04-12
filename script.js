@@ -52,6 +52,22 @@ function getSelectedTime() {
     return currentHour.toString().padStart(2, '0') + ":" + currentMinute.toString().padStart(2, '0');
 }
 
+function updateTimeLabel() {
+    const timeLabel = document.getElementById('timeLabel');
+    const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
+    let diveType = "Boat";
+    for (let i = 0; i < diveTypeRadios.length; i++) {
+        if (diveTypeRadios[i].checked) {
+            diveType = diveTypeRadios[i].value;
+            break;
+        }
+    }
+    const prefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
+    if (timeLabel) {
+        timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span>';
+    }
+}
+
 // MOCK DATA
 function getMockTideData(station, date) {
     const tideTypes = ["High", "Low", "High", "Low"];
@@ -137,6 +153,7 @@ function initTimeSpinners() {
     let hourHtml = '';
     for (let h = 0; h < 24; h++) {
         const hourStr = h.toString().padStart(2, '0');
+        const isSelected = (h === currentHour);
         hourHtml += '<div class="spinner-option" data-value="' + h + '">' + hourStr + '</div>';
     }
     hourWheel.innerHTML = hourHtml;
@@ -149,28 +166,35 @@ function initTimeSpinners() {
     }
     minuteWheel.innerHTML = minuteHtml;
     
-    function scrollToHour(hour) {
-        const options = document.querySelectorAll('#hourWheel .spinner-option');
-        for (let i = 0; i < options.length; i++) {
-            if (parseInt(options[i].dataset.value) === hour) {
-                options[i].scrollIntoView({ block: 'center' });
-                options[i].classList.add('selected');
+    function highlightSelected() {
+        // Highlight hour
+        const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
+        for (let i = 0; i < hourOptions.length; i++) {
+            if (parseInt(hourOptions[i].dataset.value) === currentHour) {
+                hourOptions[i].classList.add('selected');
             } else {
-                options[i].classList.remove('selected');
+                hourOptions[i].classList.remove('selected');
             }
         }
-    }
-    
-    function scrollToMinute(minute) {
-        const options = document.querySelectorAll('#minuteWheel .spinner-option');
-        for (let i = 0; i < options.length; i++) {
-            if (parseInt(options[i].dataset.value) === minute) {
-                options[i].scrollIntoView({ block: 'center' });
-                options[i].classList.add('selected');
+        
+        // Highlight minute
+        const minuteOptions = document.querySelectorAll('#minuteWheel .spinner-option');
+        for (let i = 0; i < minuteOptions.length; i++) {
+            if (parseInt(minuteOptions[i].dataset.value) === currentMinute) {
+                minuteOptions[i].classList.add('selected');
             } else {
-                options[i].classList.remove('selected');
+                minuteOptions[i].classList.remove('selected');
             }
         }
+        
+        // Scroll to selected positions
+        const selectedHour = document.querySelector('#hourWheel .spinner-option.selected');
+        const selectedMinute = document.querySelector('#minuteWheel .spinner-option.selected');
+        if (selectedHour) selectedHour.scrollIntoView({ block: 'center' });
+        if (selectedMinute) selectedMinute.scrollIntoView({ block: 'center' });
+        
+        // Update the time label
+        updateTimeLabel();
     }
     
     // Hour wheel scroll handler
@@ -188,11 +212,8 @@ function initTimeSpinners() {
             }
         }
         if (closest) {
-            for (let i = 0; i < options.length; i++) {
-                options[i].classList.remove('selected');
-            }
-            closest.classList.add('selected');
             currentHour = parseInt(closest.dataset.value);
+            highlightSelected();
             updateDetailed();
             updateHourly();
         }
@@ -213,25 +234,20 @@ function initTimeSpinners() {
             }
         }
         if (closest) {
-            for (let i = 0; i < options.length; i++) {
-                options[i].classList.remove('selected');
-            }
-            closest.classList.add('selected');
             currentMinute = parseInt(closest.dataset.value);
+            highlightSelected();
             updateDetailed();
             updateHourly();
         }
     });
     
-    // Set initial values
-    scrollToHour(currentHour);
-    scrollToMinute(currentMinute);
+    // Initial highlight
+    highlightSelected();
 }
 
 function initDiveType() {
     const radios = document.querySelectorAll('input[name="diveType"]');
     const coxField = document.getElementById('coxField');
-    const timeLabel = document.getElementById('timeLabel');
     
     if (!radios.length) return;
     
@@ -240,13 +256,11 @@ function initDiveType() {
             if (coxField) {
                 coxField.style.display = e.target.value === 'Boat' ? 'block' : 'none';
             }
-            if (timeLabel) {
-                timeLabel.innerText = e.target.value === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
-            }
             const lifeJackets = document.getElementById('lifeJackets');
             if (lifeJackets) {
                 lifeJackets.checked = e.target.value === 'Boat';
             }
+            updateTimeLabel();
         });
     }
     
@@ -256,6 +270,7 @@ function initDiveType() {
     } else if (coxField) {
         coxField.style.display = 'none';
     }
+    updateTimeLabel();
 }
 
 function updateTides() {
@@ -281,6 +296,7 @@ function updateHourly() {
     const weather = getMockWeatherData(currentStation, currentDate);
     const tides = getMockTideData(currentStation, currentDate);
     const selectedTime = getSelectedTime();
+    const selectedHour = parseInt(selectedTime.split(':')[0]);
     
     const container = document.getElementById('hourlyScroll');
     if (!container) return;
@@ -288,18 +304,20 @@ function updateHourly() {
     let html = '';
     for (let i = 0; i < weather.length; i++) {
         const hour = weather[i];
+        const hourNum = parseInt(hour.time);
+        
         let closestTide = tides.events[0];
-        let minDiff = Math.abs(parseInt(closestTide.time) - parseInt(hour.time));
+        let minDiff = Math.abs(parseInt(closestTide.time) - hourNum);
         for (let j = 1; j < tides.events.length; j++) {
-            const diff = Math.abs(parseInt(tides.events[j].time) - parseInt(hour.time));
+            const diff = Math.abs(parseInt(tides.events[j].time) - hourNum);
             if (diff < minDiff) {
                 minDiff = diff;
                 closestTide = tides.events[j];
             }
         }
         
-        const isSlack = Math.abs(parseInt(hour.time) - parseInt(closestTide.time)) <= 40;
-        const highlightClass = (hour.time === selectedTime.substring(0, 5)) ? 'highlight' : '';
+        const isSlack = Math.abs(hourNum - parseInt(closestTide.time)) <= 40;
+        const highlightClass = (hourNum === selectedHour) ? 'highlight' : '';
         
         html += '<div class="hourly-card ' + highlightClass + '">';
         html += '<strong>' + hour.time + '</strong>';
@@ -597,7 +615,9 @@ if (datePicker) {
     
     // AUTO-OPEN CALENDAR ON PAGE LOAD
     setTimeout(function() {
-        datePicker.showPicker();
+        if (datePicker.showPicker) {
+            datePicker.showPicker();
+        }
     }, 100);
 }
 
