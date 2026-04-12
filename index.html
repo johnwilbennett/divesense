@@ -36,12 +36,14 @@
       
       <div class="form-group">
         <label class="form-label" id="timeLabel">Lines Away Time</label>
-        <div class="time-wheel-container">
-          <div class="time-wheel" id="timeWheel"></div>
-          <div class="time-inputs">
-            <input type="number" id="hourInput" min="0" max="23" step="1" placeholder="HH">
-            <span>:</span>
-            <input type="number" id="minuteInput" min="0" max="59" step="1" placeholder="MM">
+        <div class="time-picker">
+          <div class="time-spinner">
+            <div class="spinner-label">Hour</div>
+            <div class="spinner-wheel" id="hourWheel"></div>
+          </div>
+          <div class="time-spinner">
+            <div class="spinner-label">Minute</div>
+            <div class="spinner-wheel" id="minuteWheel"></div>
           </div>
         </div>
       </div>
