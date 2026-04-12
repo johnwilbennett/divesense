@@ -529,3 +529,12 @@ input[type="radio"], input[type="checkbox"] {
 .spinner-option:hover {
   background: rgba(47, 255, 238, 0.1);
 }
+.date-picker {
+  cursor: pointer;
+}
+
+.date-picker::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.6) sepia(1) hue-rotate(150deg);
+  opacity: 0.8;
+}

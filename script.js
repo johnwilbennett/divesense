@@ -637,11 +637,7 @@ if (datePicker) {
         loadAllData();
     });
     
-    setTimeout(function() {
-        if (datePicker.showPicker) {
-            datePicker.showPicker();
-        }
-    }, 100);
+    // Calendar will open naturally when user clicks the date picker
 }
 
 function init() {
