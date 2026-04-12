@@ -16,7 +16,6 @@ let weatherCache = new Map();
 let selectedChips = new Set();
 let currentRisk = "Moderate";
 
-// Wind directions (16 points)
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
 function degreesToDirection(deg) {
@@ -205,6 +204,8 @@ async function fetchRealWeather(station, date) {
 
 function initStations() {
     const container = document.getElementById('stationScroll');
+    if (!container) return;
+    
     let html = '';
     for (let i = 0; i < stations.length; i++) {
         const station = stations[i];
@@ -226,6 +227,8 @@ function initStations() {
 
 function initTimeWheel() {
     const wheel = document.getElementById('timeWheel');
+    if (!wheel) return;
+    
     const times = [];
     for (let h = 0; h < 24; h++) {
         for (let m = 0; m < 60; m += 15) {
@@ -273,8 +276,10 @@ function initTimeWheel() {
             }
             closest.classList.add('selected');
             const time = closest.dataset.time;
-            document.getElementById('hourInput').value = time.split(':')[0];
-            document.getElementById('minuteInput').value = time.split(':')[1];
+            const hourInput = document.getElementById('hourInput');
+            const minuteInput = document.getElementById('minuteInput');
+            if (hourInput) hourInput.value = time.split(':')[0];
+            if (minuteInput) minuteInput.value = time.split(':')[1];
             updateDetailed();
             updateHourly();
         }
@@ -282,17 +287,24 @@ function initTimeWheel() {
     
     scrollToTime(defaultTime);
     
-    document.getElementById('hourInput').addEventListener('change', function() {
-        const h = document.getElementById('hourInput').value.padStart(2, '0');
-        const m = document.getElementById('minuteInput').value.padStart(2, '0');
-        scrollToTime(h + ":" + m);
-    });
+    const hourInput = document.getElementById('hourInput');
+    const minuteInput = document.getElementById('minuteInput');
     
-    document.getElementById('minuteInput').addEventListener('change', function() {
-        const h = document.getElementById('hourInput').value.padStart(2, '0');
-        const m = document.getElementById('minuteInput').value.padStart(2, '0');
-        scrollToTime(h + ":" + m);
-    });
+    if (hourInput) {
+        hourInput.addEventListener('change', function() {
+            const h = hourInput.value.padStart(2, '0');
+            const m = minuteInput ? minuteInput.value.padStart(2, '0') : "00";
+            scrollToTime(h + ":" + m);
+        });
+    }
+    
+    if (minuteInput) {
+        minuteInput.addEventListener('change', function() {
+            const h = hourInput ? hourInput.value.padStart(2, '0') : "00";
+            const m = minuteInput.value.padStart(2, '0');
+            scrollToTime(h + ":" + m);
+        });
+    }
 }
 
 function initDiveType() {
@@ -300,18 +312,29 @@ function initDiveType() {
     const coxField = document.getElementById('coxField');
     const timeLabel = document.getElementById('timeLabel');
     
+    if (!radios.length) return;
+    
     for (let i = 0; i < radios.length; i++) {
         radios[i].addEventListener('change', function(e) {
-            if (e.target.value === 'Boat') {
-                coxField.style.display = 'block';
-                timeLabel.innerText = 'Lines Away Time:';
-                document.getElementById('lifeJackets').checked = true;
-            } else {
-                coxField.style.display = 'none';
-                timeLabel.innerText = 'Kitted Brief Time:';
-                document.getElementById('lifeJackets').checked = false;
+            if (coxField) {
+                coxField.style.display = e.target.value === 'Boat' ? 'block' : 'none';
+            }
+            if (timeLabel) {
+                timeLabel.innerText = e.target.value === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
+            }
+            const lifeJackets = document.getElementById('lifeJackets');
+            if (lifeJackets) {
+                lifeJackets.checked = e.target.value === 'Boat';
             }
         });
+    }
+    
+    // Set initial state
+    const boatRadio = document.querySelector('input[name="diveType"][value="Boat"]');
+    if (boatRadio && boatRadio.checked && coxField) {
+        coxField.style.display = 'block';
+    } else if (coxField) {
+        coxField.style.display = 'none';
     }
 }
 
@@ -325,15 +348,17 @@ async function updateTides() {
     if (tides.events && tides.events.length > 0) {
         for (let i = 0; i < tides.events.length; i++) {
             const e = tides.events[i];
-            const tideIcon = (e.type === 'High') ? '🌊 HIGH TIDE' : '⬇️ LOW TIDE';
+            const tideIcon = (e.type === 'High') ? '🌊 HIGH' : '⬇️ LOW';
             html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
         }
     } else {
         html += '<div class="tide-event">⚠️ Tide data unavailable</div>';
     }
     
-    html += '<div style="margin-top: 10px;">🌙 ' + tides.moonPhase + '</div>';
-    document.getElementById('tideData').innerHTML = html;
+    html += '<div class="text-small mt-2">🌙 ' + tides.moonPhase + '</div>';
+    
+    const tideDataDiv = document.getElementById('tideData');
+    if (tideDataDiv) tideDataDiv.innerHTML = html;
 }
 
 async function updateHourly() {
@@ -343,6 +368,7 @@ async function updateHourly() {
     const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
     
     const container = document.getElementById('hourlyScroll');
+    if (!container) return;
     
     if (!weather || weather.length === 0) {
         container.innerHTML = '<div>Loading weather data...</div>';
@@ -370,11 +396,12 @@ async function updateHourly() {
         const highlightClass = (hour.time === selectedTime) ? 'highlight' : '';
         
         html += '<div class="hourly-card ' + highlightClass + '">';
-        html += '<strong>' + hour.time + '</strong><br>';
-        html += '💨 ' + hour.windSpeed + ' Bft ' + degreesToDirection(hour.windDir) + '<br>';
-        html += '🌊 ' + hour.swellHeight.toFixed(1) + 'm ' + degreesToDirection(hour.swellDir) + '<br>';
+        html += '<strong>' + hour.time + '</strong>';
+        html += '<div>💨 ' + hour.windSpeed + ' Bft</div>';
+        html += '<div>' + degreesToDirection(hour.windDir) + '</div>';
+        html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm</div>';
         if (isSlack) {
-            html += '<span style="color:#44ff44">⚡ Slack Water</span>';
+            html += '<div style="color:#44ff44; font-size:10px;">⚡ Slack Water</div>';
         }
         html += '</div>';
     }
@@ -397,7 +424,8 @@ async function updateDetailed() {
     if (!hourData) hourData = weather[12];
     
     if (!hourData) {
-        document.getElementById('detailedPanel').innerHTML = '<div>Loading detailed data...</div>';
+        const panel = document.getElementById('detailedPanel');
+        if (panel) panel.innerHTML = '<div>Loading detailed data...</div>';
         return;
     }
     
@@ -434,20 +462,26 @@ async function updateDetailed() {
     }
     
     currentRisk = riskLevel;
-    document.getElementById('riskPointer').style.marginLeft = riskPercent + '%';
+    const riskPointer = document.getElementById('riskPointer');
+    if (riskPointer) riskPointer.style.marginLeft = riskPercent + '%';
     
     let html = '';
-    html += '<div class="detail-row"><strong>🌬️ Wind:</strong> ' + hourData.windSpeed + ' Bft ' + degreesToDirection(hourData.windDir) + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
-    html += '<div class="detail-row"><strong>👁️ Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
-    html += '<div class="detail-row"><strong>🌧️ Rain:</strong> ' + hourData.rain.toFixed(1) + ' mm</div>';
-    html += '<div class="detail-row"><strong>☁️ Cloud Cover:</strong> ' + hourData.cloudCover + '%</div>';
-    html += '<div class="detail-row"><strong>🌡️ Air Temp:</strong> ' + hourData.airTemp.toFixed(1) + '°C</div>';
-    html += '<div class="detail-row"><strong>☀️ UV Index:</strong> ' + hourData.uvIndex + '</div>';
-    html += '<div class="detail-row"><strong>🌊 Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm from ' + degreesToDirection(hourData.swellDir) + '</div>';
-    html += '<div class="detail-row"><strong>📊 Risk Assessment:</strong> <span style="color: ' + (riskLevel === 'High' ? '#ff8888' : riskLevel === 'Caution' ? '#ffaa66' : riskLevel === 'Moderate' ? '#ffff88' : '#88ff88') + '">' + riskLevel + '</span></div>';
+    html += '<div class="detail-row"><strong>Wind:</strong> ' + hourData.windSpeed + ' Bft ' + degreesToDirection(hourData.windDir) + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
+    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
+    html += '<div class="detail-row"><strong>Rain:</strong> ' + hourData.rain.toFixed(1) + ' mm</div>';
+    html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourData.cloudCover + '%</div>';
+    html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourData.airTemp.toFixed(1) + '°C</div>';
+    html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourData.uvIndex + '</div>';
+    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm from ' + degreesToDirection(hourData.swellDir) + '</div>';
+    
+    let riskColor = '#88ff88';
+    if (riskLevel === 'High') riskColor = '#ff8888';
+    else if (riskLevel === 'Caution') riskColor = '#ffaa66';
+    else if (riskLevel === 'Moderate') riskColor = '#ffff88';
+    html += '<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ' + riskColor + '">' + riskLevel + '</span></div>';
     
     if (prevTide || nextTide) {
-        html += '<div class="detail-row" style="margin-top:10px;"><strong>🌊 Tides near ' + selectedTime + ':</strong></div>';
+        html += '<div class="detail-row" style="margin-top:10px;"><strong>Tides near ' + selectedTime + ':</strong></div>';
         if (prevTide) {
             html += '<div class="detail-row">← ' + prevTide.type + ' at ' + prevTide.time + ' (' + prevTide.height.toFixed(2) + 'm)</div>';
         }
@@ -458,12 +492,14 @@ async function updateDetailed() {
         html += '<div class="detail-row">' + tides.moonPhase + '</div>';
     }
     
-    document.getElementById('detailedPanel').innerHTML = html;
+    const panel = document.getElementById('detailedPanel');
+    if (panel) panel.innerHTML = html;
 }
 
 function initChips() {
     const categories = ["Reef", "Wreck", "Drift", "Deep", "Night", "Snorkel", "Kelp", "Photography", "Navigation", "Training", "Citizen Science", "Fitness Test"];
     const container = document.getElementById('chipsContainer');
+    if (!container) return;
     
     let html = '';
     for (let i = 0; i < categories.length; i++) {
@@ -485,32 +521,44 @@ function initChips() {
     }
 }
 
-// Event listeners for depth validation
-document.getElementById('maxDepth').addEventListener('change', function(e) {
-    const depth = parseInt(e.target.value);
-    if (depth >= 21) {
-        const chips = document.querySelectorAll('.chips span');
-        for (let i = 0; i < chips.length; i++) {
-            if (chips[i].dataset.chip === 'Deep') {
-                if (!chips[i].classList.contains('active-chip')) {
-                    chips[i].classList.add('active-chip');
-                    selectedChips.add('Deep');
+// Depth validation and auto Deep chip
+const maxDepthInput = document.getElementById('maxDepth');
+if (maxDepthInput) {
+    maxDepthInput.addEventListener('change', function(e) {
+        const depth = parseInt(e.target.value);
+        if (depth >= 21) {
+            const chips = document.querySelectorAll('.chips span');
+            for (let i = 0; i < chips.length; i++) {
+                if (chips[i].dataset.chip === 'Deep') {
+                    if (!chips[i].classList.contains('active-chip')) {
+                        chips[i].classList.add('active-chip');
+                        selectedChips.add('Deep');
+                    }
+                    break;
                 }
-                break;
             }
         }
-    }
-    if (depth < 5 || depth > 45) {
-        e.target.style.borderColor = '#ff4444';
-    } else {
-        e.target.style.borderColor = '#1AA7A7';
-    }
-});
+        if (depth < 5 || depth > 45) {
+            e.target.style.borderColor = '#ff4444';
+        } else {
+            e.target.style.borderColor = '#1AA7A7';
+        }
+    });
+}
 
 function getExportData() {
-    const diveSite = document.getElementById('diveSite').value;
-    const dod = document.getElementById('dod').value;
+    const diveSite = document.getElementById('diveSite');
+    const dod = document.getElementById('dod');
     const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
+    const selectedTimeElement = document.querySelector('.time-option.selected');
+    const categoriesArray = Array.from(selectedChips);
+    const maxDepth = document.getElementById('maxDepth');
+    const coxNameInput = document.getElementById('coxName');
+    const coxModeRadios = document.querySelectorAll('input[name="coxMode"]');
+    const participationRadios = document.querySelectorAll('input[name="participation"]');
+    const torches = document.getElementById('torches');
+    const lifeJackets = document.getElementById('lifeJackets');
+    
     let diveType = "Boat";
     for (let i = 0; i < diveTypeRadios.length; i++) {
         if (diveTypeRadios[i].checked) {
@@ -518,14 +566,7 @@ function getExportData() {
             break;
         }
     }
-    const selectedTimeElement = document.querySelector('.time-option.selected');
-    const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
-    const categoriesArray = Array.from(selectedChips);
-    const categories = categoriesArray.join(', ');
-    const maxDepth = document.getElementById('maxDepth').value;
-    const coxNameInput = document.getElementById('coxName');
-    const coxName = coxNameInput ? coxNameInput.value : 'N/A';
-    const coxModeRadios = document.querySelectorAll('input[name="coxMode"]');
+    
     let coxMode = "N/A";
     for (let i = 0; i < coxModeRadios.length; i++) {
         if (coxModeRadios[i].checked) {
@@ -533,7 +574,7 @@ function getExportData() {
             break;
         }
     }
-    const participationRadios = document.querySelectorAll('input[name="participation"]');
+    
     let participation = "Open to All";
     for (let i = 0; i < participationRadios.length; i++) {
         if (participationRadios[i].checked) {
@@ -541,103 +582,108 @@ function getExportData() {
             break;
         }
     }
-    const torches = document.getElementById('torches').checked ? '✓ Torches Required' : '';
-    const lifeJackets = document.getElementById('lifeJackets').checked ? '✓ Life Jackets Required' : '';
     
     return { 
-        diveSite: diveSite,
-        dod: dod,
+        diveSite: diveSite ? diveSite.value : '',
+        dod: dod ? dod.value : '',
         diveType: diveType,
-        selectedTime: selectedTime,
-        categories: categories,
-        maxDepth: maxDepth,
-        coxName: coxName,
+        selectedTime: selectedTimeElement ? selectedTimeElement.dataset.time : "12:00",
+        categories: categoriesArray.join(', '),
+        maxDepth: maxDepth ? maxDepth.value : '',
+        coxName: coxNameInput ? coxNameInput.value : 'N/A',
         coxMode: coxMode,
         participation: participation,
-        torches: torches,
-        lifeJackets: lifeJackets
+        torches: torches && torches.checked ? '✓ Torches Required' : '',
+        lifeJackets: lifeJackets && lifeJackets.checked ? '✓ Life Jackets Required' : ''
     };
 }
 
-document.getElementById('whatsappBtn').addEventListener('click', async function() {
-    const data = getExportData();
-    const weather = await fetchRealWeather(currentStation, currentDate);
-    const selectedTimeElement = document.querySelector('.time-option.selected');
-    const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
-    let hourWeather = null;
-    for (let i = 0; i < weather.length; i++) {
-        if (weather[i].time === selectedTime) {
-            hourWeather = weather[i];
-            break;
+// Export buttons
+const whatsappBtn = document.getElementById('whatsappBtn');
+if (whatsappBtn) {
+    whatsappBtn.addEventListener('click', async function() {
+        const data = getExportData();
+        const weather = await fetchRealWeather(currentStation, currentDate);
+        const selectedTimeElement = document.querySelector('.time-option.selected');
+        const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
+        let hourWeather = null;
+        for (let i = 0; i < weather.length; i++) {
+            if (weather[i].time === selectedTime) {
+                hourWeather = weather[i];
+                break;
+            }
         }
-    }
-    
-    let text = "🌊 DiveSense Dive Plan 🌊\n\n";
-    text += "📍 Station: " + currentStation.name + "\n";
-    text += "🏊 Dive Site: " + data.diveSite + "\n";
-    text += "⏰ Time: " + data.selectedTime + " (" + (data.diveType === 'Boat' ? 'Lines Away' : 'Kitted Brief') + ")\n\n";
-    text += "🌡️ Conditions at Dive Time:\n";
-    text += "• Wind: " + (hourWeather ? hourWeather.windSpeed : '?') + " Bft " + (hourWeather ? degreesToDirection(hourWeather.windDir) : '?') + "\n";
-    text += "• Swell: " + (hourWeather ? hourWeather.swellHeight.toFixed(1) : '?') + "m\n";
-    text += "• Visibility: " + (hourWeather ? hourWeather.visibility.toFixed(1) : '?') + "km\n";
-    text += "• Air Temp: " + (hourWeather ? hourWeather.airTemp.toFixed(1) : '?') + "°C\n\n";
-    text += "📋 Plan Details:\n";
-    text += "• DOD: " + data.dod + "\n";
-    text += "• Max Depth: " + data.maxDepth + "m\n";
-    text += "• Categories: " + data.categories + "\n\n";
-    text += "⚠️ Risk Level: " + currentRisk + "\n\n";
-    if (data.torches) text += "🔦 " + data.torches + "\n";
-    if (data.lifeJackets) text += "🦺 " + data.lifeJackets + "\n";
-    text += "\n_Plan created with DiveSense - Always verify with official sources_";
-    
-    window.open("https://wa.me/?text=" + encodeURIComponent(text), '_blank');
-});
+        
+        let text = "🌊 DiveSense Dive Plan 🌊\n\n";
+        text += "📍 Station: " + currentStation.name + "\n";
+        text += "🏊 Dive Site: " + data.diveSite + "\n";
+        text += "⏰ Time: " + data.selectedTime + " (" + (data.diveType === 'Boat' ? 'Lines Away' : 'Kitted Brief') + ")\n\n";
+        text += "🌡️ Conditions:\n";
+        text += "• Wind: " + (hourWeather ? hourWeather.windSpeed : '?') + " Bft " + (hourWeather ? degreesToDirection(hourWeather.windDir) : '?') + "\n";
+        text += "• Swell: " + (hourWeather ? hourWeather.swellHeight.toFixed(1) : '?') + "m\n";
+        text += "• Visibility: " + (hourWeather ? hourWeather.visibility.toFixed(1) : '?') + "km\n";
+        text += "• Air Temp: " + (hourWeather ? hourWeather.airTemp.toFixed(1) : '?') + "°C\n\n";
+        text += "📋 Plan:\n";
+        text += "• DOD: " + data.dod + "\n";
+        text += "• Max Depth: " + data.maxDepth + "m\n";
+        text += "• Categories: " + data.categories + "\n\n";
+        text += "⚠️ Risk: " + currentRisk + "\n\n";
+        if (data.torches) text += "🔦 " + data.torches + "\n";
+        if (data.lifeJackets) text += "🦺 " + data.lifeJackets + "\n";
+        text += "\n_Always verify with official sources_";
+        
+        window.open("https://wa.me/?text=" + encodeURIComponent(text), '_blank');
+    });
+}
 
-document.getElementById('pdfBtn').addEventListener('click', function() {
-    alert('PDF export coming soon');
-});
-
-document.getElementById('emailBtn').addEventListener('click', async function() {
-    const data = getExportData();
-    const weather = await fetchRealWeather(currentStation, currentDate);
-    const selectedTimeElement = document.querySelector('.time-option.selected');
-    const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
-    let hourWeather = null;
-    for (let i = 0; i < weather.length; i++) {
-        if (weather[i].time === selectedTime) {
-            hourWeather = weather[i];
-            break;
+const emailBtn = document.getElementById('emailBtn');
+if (emailBtn) {
+    emailBtn.addEventListener('click', async function() {
+        const data = getExportData();
+        const weather = await fetchRealWeather(currentStation, currentDate);
+        const selectedTimeElement = document.querySelector('.time-option.selected');
+        const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
+        let hourWeather = null;
+        for (let i = 0; i < weather.length; i++) {
+            if (weather[i].time === selectedTime) {
+                hourWeather = weather[i];
+                break;
+            }
         }
-    }
-    
-    const subject = "Dive Plan - " + data.diveSite + " - " + formatDateDisplay(currentDate);
-    let body = "DiveSense Dive Plan\n==================\n";
-    body += "Station: " + currentStation.name + "\n";
-    body += "Date: " + formatDateDisplay(currentDate) + "\n";
-    body += "Dive Site: " + data.diveSite + "\n";
-    body += "Dive Type: " + data.diveType + "\n";
-    body += "Time: " + data.selectedTime + "\n\n";
-    body += "Conditions:\n";
-    body += "- Wind: " + (hourWeather ? hourWeather.windSpeed : '?') + " Bft " + (hourWeather ? degreesToDirection(hourWeather.windDir) : '?') + "\n";
-    body += "- Swell: " + (hourWeather ? hourWeather.swellHeight.toFixed(1) : '?') + "m\n";
-    body += "- Visibility: " + (hourWeather ? hourWeather.visibility.toFixed(1) : '?') + "km\n";
-    body += "- Air Temp: " + (hourWeather ? hourWeather.airTemp.toFixed(1) : '?') + "°C\n\n";
-    body += "Plan Details:\n";
-    body += "- DOD: " + data.dod + "\n";
-    body += "- Max Depth: " + data.maxDepth + "m\n";
-    body += "- Categories: " + data.categories + "\n";
-    body += "- Risk Level: " + currentRisk + "\n\n";
-    if (data.torches) body += "- " + data.torches + "\n";
-    if (data.lifeJackets) body += "- " + data.lifeJackets + "\n";
-    body += "\n---\nCreated with DiveSense - Always verify with official sources before diving.";
-    
-    window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-});
+        
+        const subject = "Dive Plan - " + data.diveSite + " - " + formatDateDisplay(currentDate);
+        let body = "DiveSense Dive Plan\n==================\n";
+        body += "Station: " + currentStation.name + "\n";
+        body += "Date: " + formatDateDisplay(currentDate) + "\n";
+        body += "Dive Site: " + data.diveSite + "\n";
+        body += "Dive Type: " + data.diveType + "\n";
+        body += "Time: " + data.selectedTime + "\n\n";
+        body += "Conditions:\n";
+        body += "- Wind: " + (hourWeather ? hourWeather.windSpeed : '?') + " Bft " + (hourWeather ? degreesToDirection(hourWeather.windDir) : '?') + "\n";
+        body += "- Swell: " + (hourWeather ? hourWeather.swellHeight.toFixed(1) : '?') + "m\n";
+        body += "- Visibility: " + (hourWeather ? hourWeather.visibility.toFixed(1) : '?') + "km\n";
+        body += "- Air Temp: " + (hourWeather ? hourWeather.airTemp.toFixed(1) : '?') + "°C\n\n";
+        body += "Plan Details:\n";
+        body += "- DOD: " + data.dod + "\n";
+        body += "- Max Depth: " + data.maxDepth + "m\n";
+        body += "- Categories: " + data.categories + "\n";
+        body += "- Risk Level: " + currentRisk + "\n\n";
+        if (data.torches) body += "- " + data.torches + "\n";
+        if (data.lifeJackets) body += "- " + data.lifeJackets + "\n";
+        body += "\n---\nCreated with DiveSense";
+        
+        window.location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    });
+}
 
 async function loadAllData() {
-    document.getElementById('tideData').innerHTML = '<div>Loading tide data...</div>';
-    document.getElementById('hourlyScroll').innerHTML = '<div>Loading weather data...</div>';
-    document.getElementById('detailedPanel').innerHTML = '<div>Loading conditions...</div>';
+    const tideDiv = document.getElementById('tideData');
+    const hourlyDiv = document.getElementById('hourlyScroll');
+    const detailedDiv = document.getElementById('detailedPanel');
+    
+    if (tideDiv) tideDiv.innerHTML = '<div>Loading tide data...</div>';
+    if (hourlyDiv) hourlyDiv.innerHTML = '<div>Loading weather data...</div>';
+    if (detailedDiv) detailedDiv.innerHTML = '<div>Loading conditions...</div>';
     
     await updateTides();
     await updateHourly();
@@ -646,18 +692,20 @@ async function loadAllData() {
 
 // Date picker setup
 const datePicker = document.getElementById('datePicker');
-const today = new Date();
-datePicker.valueAsDate = today;
-datePicker.min = formatDateForAPI(today);
-
-const maxDate = new Date(today);
-maxDate.setDate(today.getDate() + 10);
-datePicker.max = formatDateForAPI(maxDate);
-
-datePicker.addEventListener('change', function(e) {
-    currentDate = new Date(e.target.value);
-    loadAllData();
-});
+if (datePicker) {
+    const today = new Date();
+    datePicker.valueAsDate = today;
+    datePicker.min = formatDateForAPI(today);
+    
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 10);
+    datePicker.max = formatDateForAPI(maxDate);
+    
+    datePicker.addEventListener('change', function(e) {
+        currentDate = new Date(e.target.value);
+        loadAllData();
+    });
+}
 
 // Initialize everything
 function init() {
@@ -668,4 +716,9 @@ function init() {
     loadAllData();
 }
 
-init();
+// Start the app when page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
