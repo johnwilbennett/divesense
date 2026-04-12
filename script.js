@@ -15,6 +15,7 @@ let selectedChips = new Set();
 let currentRisk = "Moderate";
 let currentHour = currentDate.getHours();
 let currentMinute = currentDate.getMinutes();
+let isScrolling = false;
 
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
@@ -153,7 +154,6 @@ function initTimeSpinners() {
     let hourHtml = '';
     for (let h = 0; h < 24; h++) {
         const hourStr = h.toString().padStart(2, '0');
-        const isSelected = (h === currentHour);
         hourHtml += '<div class="spinner-option" data-value="' + h + '">' + hourStr + '</div>';
     }
     hourWheel.innerHTML = hourHtml;
@@ -166,8 +166,8 @@ function initTimeSpinners() {
     }
     minuteWheel.innerHTML = minuteHtml;
     
-    function highlightSelected() {
-        // Highlight hour
+    function updateHighlightOnly() {
+        // Just update highlight classes without scrolling
         const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
         for (let i = 0; i < hourOptions.length; i++) {
             if (parseInt(hourOptions[i].dataset.value) === currentHour) {
@@ -177,7 +177,6 @@ function initTimeSpinners() {
             }
         }
         
-        // Highlight minute
         const minuteOptions = document.querySelectorAll('#minuteWheel .spinner-option');
         for (let i = 0; i < minuteOptions.length; i++) {
             if (parseInt(minuteOptions[i].dataset.value) === currentMinute) {
@@ -187,62 +186,87 @@ function initTimeSpinners() {
             }
         }
         
-        // Scroll to selected positions
-        const selectedHour = document.querySelector('#hourWheel .spinner-option.selected');
-        const selectedMinute = document.querySelector('#minuteWheel .spinner-option.selected');
-        if (selectedHour) selectedHour.scrollIntoView({ block: 'center' });
-        if (selectedMinute) selectedMinute.scrollIntoView({ block: 'center' });
-        
-        // Update the time label
         updateTimeLabel();
     }
     
+    function scrollToSelected() {
+        // Only scroll if not already scrolling (prevent loops)
+        if (isScrolling) return;
+        isScrolling = true;
+        
+        const selectedHour = document.querySelector('#hourWheel .spinner-option.selected');
+        const selectedMinute = document.querySelector('#minuteWheel .spinner-option.selected');
+        if (selectedHour) selectedHour.scrollIntoView({ block: 'center', behavior: 'auto' });
+        if (selectedMinute) selectedMinute.scrollIntoView({ block: 'center', behavior: 'auto' });
+        
+        setTimeout(() => { isScrolling = false; }, 100);
+    }
+    
     // Hour wheel scroll handler
+    let hourScrollTimeout;
     hourWheel.addEventListener('scroll', function() {
-        const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
-        const options = document.querySelectorAll('#hourWheel .spinner-option');
-        let closest = null;
-        let minDist = Infinity;
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i];
-            const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = opt;
+        if (hourScrollTimeout) clearTimeout(hourScrollTimeout);
+        hourScrollTimeout = setTimeout(() => {
+            const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
+            const options = document.querySelectorAll('#hourWheel .spinner-option');
+            let closest = null;
+            let minDist = Infinity;
+            for (let i = 0; i < options.length; i++) {
+                const opt = options[i];
+                const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = opt;
+                }
             }
-        }
-        if (closest) {
-            currentHour = parseInt(closest.dataset.value);
-            highlightSelected();
-            updateDetailed();
-            updateHourly();
-        }
+            if (closest) {
+                const newHour = parseInt(closest.dataset.value);
+                if (newHour !== currentHour) {
+                    currentHour = newHour;
+                    updateHighlightOnly();
+                    updateDetailed();
+                    updateHourly();
+                }
+            }
+        }, 10);
     });
     
     // Minute wheel scroll handler
+    let minuteScrollTimeout;
     minuteWheel.addEventListener('scroll', function() {
-        const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
-        const options = document.querySelectorAll('#minuteWheel .spinner-option');
-        let closest = null;
-        let minDist = Infinity;
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i];
-            const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = opt;
+        if (minuteScrollTimeout) clearTimeout(minuteScrollTimeout);
+        minuteScrollTimeout = setTimeout(() => {
+            const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
+            const options = document.querySelectorAll('#minuteWheel .spinner-option');
+            let closest = null;
+            let minDist = Infinity;
+            for (let i = 0; i < options.length; i++) {
+                const opt = options[i];
+                const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = opt;
+                }
             }
-        }
-        if (closest) {
-            currentMinute = parseInt(closest.dataset.value);
-            highlightSelected();
-            updateDetailed();
-            updateHourly();
-        }
+            if (closest) {
+                const newMinute = parseInt(closest.dataset.value);
+                if (newMinute !== currentMinute) {
+                    currentMinute = newMinute;
+                    updateHighlightOnly();
+                    updateDetailed();
+                    updateHourly();
+                }
+            }
+        }, 10);
     });
     
-    // Initial highlight
-    highlightSelected();
+    // Set initial values and scroll to them
+    updateHighlightOnly();
+    
+    // Use requestAnimationFrame to ensure DOM is ready before scrolling
+    requestAnimationFrame(() => {
+        scrollToSelected();
+    });
 }
 
 function initDiveType() {
