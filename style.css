@@ -5,7 +5,7 @@
 }
 
 body {
-  background: linear-gradient(135deg, #020B24 0%, #001030 100%);
+  background: #020B24;
   color: #e0e0e0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
   padding: 16px;
@@ -20,8 +20,8 @@ body {
 /* Header */
 header {
   text-align: center;
-  padding: 20px 0 10px 0;
-  margin-bottom: 20px;
+  padding: 16px 0;
+  margin-bottom: 16px;
 }
 
 .neon-title {
@@ -31,59 +31,46 @@ header {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 20px rgba(47,255,238,0.3);
   letter-spacing: 1px;
 }
 
 .subtitle {
   color: #1AA7A7;
-  font-size: 12px;
+  font-size: 10px;
   letter-spacing: 2px;
   margin-top: 4px;
 }
 
 /* Cards */
 .card {
-  background: rgba(2, 11, 36, 0.6);
-  backdrop-filter: blur(10px);
+  background: rgba(2, 11, 36, 0.8);
   border-radius: 20px;
-  padding: 20px;
+  padding: 18px;
   margin-bottom: 16px;
   border: 1px solid rgba(0, 170, 255, 0.2);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .card-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #2FFFEF;
   margin-bottom: 16px;
   letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.card-title::before {
-  content: '';
-  width: 3px;
-  height: 16px;
-  background: #2FFFEF;
-  border-radius: 2px;
+  padding-left: 10px;
+  border-left: 3px solid #2FFFEF;
 }
 
 /* Station Scroll */
 .station-scroll {
   display: flex;
   overflow-x: auto;
-  gap: 12px;
-  padding: 4px 0 12px 0;
-  scrollbar-width: thin;
-  scrollbar-color: #2FFFEF #0a1a2f;
+  gap: 10px;
+  padding-bottom: 8px;
 }
 
 .station-scroll::-webkit-scrollbar {
-  height: 4px;
+  height: 3px;
 }
 
 .station-scroll::-webkit-scrollbar-track {
@@ -99,23 +86,26 @@ header {
 .station-card {
   background: #0a1a2f;
   border-radius: 30px;
-  padding: 10px 20px;
-  min-width: 100px;
+  padding: 8px 18px;
+  min-width: 90px;
   text-align: center;
   cursor: pointer;
   border: 1px solid #1AA7A7;
   transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .station-card small {
   font-size: 10px;
   color: #1AA7A7;
+  display: block;
 }
 
 .station-card.active {
-  background: linear-gradient(135deg, #2FFFEF20 0%, #00AAFF20 100%);
+  background: rgba(47, 255, 238, 0.15);
   border-color: #2FFFEF;
-  box-shadow: 0 0 15px rgba(47,255,238,0.3);
+  box-shadow: 0 0 10px rgba(47, 255, 238, 0.3);
 }
 
 .station-card.active small {
@@ -124,14 +114,15 @@ header {
 
 /* Form Elements */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .form-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #1AA7A7;
   margin-bottom: 8px;
   display: block;
+  text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
@@ -140,16 +131,16 @@ header {
   background: #0a1a2f;
   border: 1px solid #1AA7A7;
   border-radius: 12px;
-  padding: 14px;
+  padding: 12px;
   color: #2FFFEF;
-  font-size: 16px;
+  font-size: 14px;
   font-family: monospace;
 }
 
 /* Time Wheel */
 .time-wheel-container {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
   flex-wrap: wrap;
   background: #0a1a2f;
@@ -158,90 +149,74 @@ header {
 }
 
 .time-wheel {
-  height: 160px;
-  width: 100px;
+  height: 140px;
+  width: 80px;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   background: #01061a;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid #1AA7A7;
 }
 
 .time-option {
   scroll-snap-align: center;
   text-align: center;
-  padding: 14px 0;
-  font-size: 16px;
+  padding: 12px 0;
+  font-size: 14px;
   font-family: monospace;
   color: #1AA7A7;
 }
 
 .time-option.selected {
   color: #2FFFEF;
-  text-shadow: 0 0 8px rgba(47,255,238,0.5);
+  text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
   font-weight: 600;
-  background: rgba(47,255,238,0.1);
+  background: rgba(47, 255, 238, 0.1);
 }
 
 .time-inputs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
 .time-inputs input {
-  width: 60px;
+  width: 55px;
   background: #01061a;
   border: 1px solid #1AA7A7;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 10px;
   color: #2FFFEF;
-  font-size: 18px;
+  font-size: 16px;
   font-family: monospace;
   text-align: center;
 }
 
-/* Radio Groups */
-.radio-group {
+.time-inputs span {
+  color: #1AA7A7;
+  font-size: 20px;
+}
+
+/* Radio & Checkbox Groups */
+.radio-group, .checkbox-group {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  margin: 10px 0;
 }
 
-.radio-group label {
+.radio-group label, .checkbox-group label {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-input[type="radio"] {
+input[type="radio"], input[type="checkbox"] {
   accent-color: #2FFFEF;
-  width: 18px;
-  height: 18px;
-}
-
-/* Checkbox Group */
-.checkbox-group {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin: 12px 0;
-}
-
-.checkbox-group label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-input[type="checkbox"] {
-  accent-color: #2FFFEF;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Input Fields */
@@ -250,10 +225,10 @@ input[type="checkbox"] {
   background: #0a1a2f;
   border: 1px solid #1AA7A7;
   border-radius: 12px;
-  padding: 14px;
+  padding: 12px;
   color: #2FFFEF;
   font-size: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .form-input::placeholder {
@@ -264,7 +239,18 @@ input[type="checkbox"] {
 .form-input:focus {
   outline: none;
   border-color: #2FFFEF;
-  box-shadow: 0 0 10px rgba(47,255,238,0.2);
+}
+
+/* Row layout */
+.row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.row > * {
+  flex: 1;
+  margin-bottom: 0;
 }
 
 /* Tide Events */
@@ -272,61 +258,56 @@ input[type="checkbox"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
+  padding: 10px;
   background: rgba(0, 170, 255, 0.05);
-  border-radius: 12px;
-  margin-bottom: 8px;
+  border-radius: 10px;
+  margin-bottom: 6px;
   border-left: 2px solid #2FFFEF;
+  font-size: 13px;
 }
 
-.springs-text {
-  color: #ff6b6b;
-  font-weight: 600;
-}
-
-.neaps-text {
-  color: #6bff6b;
-  font-weight: 600;
-}
+.springs-text { color: #ff6b6b; font-weight: 600; }
+.neaps-text { color: #6bff6b; font-weight: 600; }
 
 /* Hourly Scroll */
 .hourly-scroll {
   display: flex;
   overflow-x: auto;
-  gap: 12px;
+  gap: 10px;
   padding: 8px 0;
-  scroll-snap-type: x mandatory;
 }
 
 .hourly-card {
-  min-width: 130px;
+  min-width: 110px;
   background: #0a1a2f;
-  border-radius: 16px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 10px;
   border: 1px solid #1AA7A7;
-  scroll-snap-align: start;
 }
 
 .hourly-card.highlight {
   border-color: #2FFFEF;
-  background: rgba(47,255,238,0.1);
-  box-shadow: 0 0 15px rgba(47,255,238,0.2);
+  background: rgba(47, 255, 238, 0.1);
 }
 
 .hourly-card strong {
   color: #2FFFEF;
-  font-size: 18px;
+  font-size: 16px;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+.hourly-card br {
+  display: none;
 }
 
 /* Detailed Panel */
 .detail-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(0, 170, 255, 0.1);
+  font-size: 13px;
 }
 
 .detail-row strong {
@@ -337,27 +318,27 @@ input[type="checkbox"] {
 /* Risk Bar */
 .risk-bar {
   display: flex;
-  margin: 20px 0 8px;
-  border-radius: 30px;
+  margin: 16px 0 6px;
+  border-radius: 20px;
   overflow: hidden;
 }
 
 .risk-segment {
   flex: 1;
   text-align: center;
-  padding: 8px;
-  font-size: 12px;
+  padding: 6px;
+  font-size: 10px;
   font-weight: 600;
 }
 
-.risk-segment.green { background: #1f8a4c; color: white; }
+.risk-segment.green { background: #1f8a4c; }
 .risk-segment.yellow { background: #e0b01a; color: #1a1a1a; }
-.risk-segment.orange { background: #e67e22; color: white; }
-.risk-segment.red { background: #c0392b; color: white; }
+.risk-segment.orange { background: #e67e22; }
+.risk-segment.red { background: #c0392b; }
 
 .risk-pointer {
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: #2FFFEF;
   margin-top: 4px;
   transition: margin-left 0.3s ease;
@@ -367,15 +348,15 @@ input[type="checkbox"] {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .chips span {
   background: #0a1a2f;
-  padding: 8px 18px;
+  padding: 6px 16px;
   border-radius: 30px;
   border: 1px solid #1AA7A7;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -391,18 +372,17 @@ input[type="checkbox"] {
 .export-buttons {
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .btn {
   flex: 1;
-  padding: 14px;
-  border-radius: 40px;
-  font-size: 14px;
+  padding: 12px;
+  border-radius: 30px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: transform 0.1s, opacity 0.2s;
+  transition: transform 0.1s;
   text-align: center;
 }
 
@@ -410,53 +390,19 @@ input[type="checkbox"] {
   transform: scale(0.98);
 }
 
-.btn-wa {
-  background: #25D366;
-  color: white;
-}
-
-.btn-pdf {
-  background: #E34F26;
-  color: white;
-}
-
-.btn-email {
-  background: #3b5998;
-  color: white;
-}
+.btn-wa { background: #25D366; color: white; }
+.btn-email { background: #3b5998; color: white; }
 
 /* Advisory */
 .advisory {
-  font-size: 10px;
-  color: #666;
+  font-size: 9px;
+  color: #555;
   text-align: center;
-  padding: 20px 0 30px;
+  padding: 16px 0 24px;
   line-height: 1.4;
-  border-top: 1px solid rgba(0, 170, 255, 0.1);
-  margin-top: 20px;
 }
 
 /* Utility */
-.text-small {
-  font-size: 11px;
-  color: #1AA7A7;
-}
-
-.mt-2 {
-  margin-top: 8px;
-}
-
-.mb-2 {
-  margin-bottom: 8px;
-}
-
-/* Row layouts */
-.row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.row > * {
-  flex: 1;
-}
+.text-small { font-size: 10px; color: #1AA7A7; }
+.mt-2 { margin-top: 8px; }
+.mb-2 { margin-bottom: 8px; }

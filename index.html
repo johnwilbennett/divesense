@@ -1,46 +1,132 @@
-<!-- Section 5: Crew & Admin (matching screenshot) -->
-<section class="card">
-  <div class="card-title">Crew & Admin</div>
-  
-  <input type="text" id="diveSite" placeholder="Dive Site Name" class="form-input">
-  
-  <div class="row">
-    <input type="text" id="dod" placeholder="DOD (required)" class="form-input">
-    <input type="text" id="dodAsst" placeholder="Assistant (optional)" class="form-input">
-  </div>
-  
-  <div class="radio-group mb-2">
-    <label><input type="radio" name="participation" value="Open to All" checked> Open to All</label>
-    <label><input type="radio" name="participation" value="Restricted to D2+"> Restricted to D2+</label>
-  </div>
-  
-  <input type="number" id="maxDepth" placeholder="Max Depth (m)" class="form-input" min="5" max="45">
-  
-  <div id="coxField" style="display: block;">
-    <input type="text" id="coxName" placeholder="Cox'n Name(s)" class="form-input">
-    <div class="radio-group">
-      <label><input type="radio" name="coxMode" value="Dedicated"> Dedicated Cox'n</label>
-      <label><input type="radio" name="coxMode" value="Split"> Split Cox'n</label>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>DiveSense – Neon Dive Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 class="neon-title">🌊 DiveSense</h1>
+      <p class="subtitle">NEON AQUATIC EDITION</p>
+    </header>
+
+    <!-- Station Selector -->
+    <section class="card">
+      <div class="card-title">Station</div>
+      <div class="station-scroll" id="stationScroll"></div>
+    </section>
+
+    <!-- Date & Time -->
+    <section class="card">
+      <div class="form-group">
+        <label class="form-label">Select Date</label>
+        <input type="date" id="datePicker" class="date-picker">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Dive Type</label>
+        <div class="radio-group">
+          <label><input type="radio" name="diveType" value="Boat" checked> Boat Dive</label>
+          <label><input type="radio" name="diveType" value="Shore"> Shore Dive</label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" id="timeLabel">Lines Away Time</label>
+        <div class="time-wheel-container">
+          <div class="time-wheel" id="timeWheel"></div>
+          <div class="time-inputs">
+            <input type="number" id="hourInput" min="0" max="23" step="1" placeholder="HH">
+            <span>:</span>
+            <input type="number" id="minuteInput" min="0" max="59" step="1" placeholder="MM">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tides Section -->
+    <section class="card">
+      <div class="card-title">Tides</div>
+      <div id="tideData">Loading tides...</div>
+      <div class="text-small mt-2">Heights relative to LAT (Lowest Astronomical Tide)</div>
+    </section>
+
+    <!-- Hourly Conditions -->
+    <section class="card">
+      <div class="card-title">Hourly Conditions</div>
+      <div class="hourly-scroll" id="hourlyScroll"></div>
+    </section>
+
+    <!-- Detailed Conditions & Risk -->
+    <section class="card">
+      <div class="card-title">Detailed Conditions</div>
+      <div id="detailedPanel">Loading conditions...</div>
+      
+      <div class="risk-bar">
+        <div class="risk-segment green">Low</div>
+        <div class="risk-segment yellow">Moderate</div>
+        <div class="risk-segment orange">Caution</div>
+        <div class="risk-segment red">High</div>
+      </div>
+      <div id="riskPointer" class="risk-pointer">▲ Risk Level</div>
+    </section>
+
+    <!-- Crew & Admin -->
+    <section class="card">
+      <div class="card-title">Crew & Admin</div>
+      
+      <input type="text" id="diveSite" placeholder="Dive Site Name" class="form-input">
+      
+      <div class="row">
+        <input type="text" id="dod" placeholder="DOD (required)" class="form-input">
+        <input type="text" id="dodAsst" placeholder="Assistant (optional)" class="form-input">
+      </div>
+      
+      <div class="radio-group">
+        <label><input type="radio" name="participation" value="Open to All" checked> Open to All</label>
+        <label><input type="radio" name="participation" value="Restricted to D2+"> Restricted to D2+</label>
+      </div>
+      
+      <input type="number" id="maxDepth" placeholder="Max Depth (m)" class="form-input" min="5" max="45">
+      
+      <div id="coxField">
+        <input type="text" id="coxName" placeholder="Cox'n Name(s)" class="form-input">
+        <div class="radio-group">
+          <label><input type="radio" name="coxMode" value="Dedicated"> Dedicated Cox'n</label>
+          <label><input type="radio" name="coxMode" value="Split"> Split Cox'n</label>
+        </div>
+      </div>
+      
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="torches"> Torches Required</label>
+        <label><input type="checkbox" id="lifeJackets" checked> Life Jackets Required</label>
+      </div>
+    </section>
+
+    <!-- Dive Categories -->
+    <section class="card">
+      <div class="card-title">Dive Categories</div>
+      <div class="chips" id="chipsContainer"></div>
+    </section>
+
+    <!-- Export -->
+    <section class="card">
+      <div class="card-title">Export</div>
+      <div class="export-buttons">
+        <button id="whatsappBtn" class="btn btn-wa">Share via WhatsApp</button>
+        <button id="emailBtn" class="btn btn-email">Email PDF</button>
+      </div>
+    </section>
+
+    <!-- Advisory -->
+    <div class="advisory">
+      Always cross-check weather, swell, and tide information with official sources. Conditions can change rapidly. This tool is for planning support only and does not replace local knowledge, skipper judgement, or official forecasts.
     </div>
   </div>
-  
-  <div class="checkbox-group">
-    <label><input type="checkbox" id="torches"> Torches Required</label>
-    <label><input type="checkbox" id="lifeJackets" checked> Life Jackets Required</label>
-  </div>
-</section>
 
-<!-- Section 6: Dive Categories -->
-<section class="card">
-  <div class="card-title">Dive Categories</div>
-  <div class="chips" id="chipsContainer"></div>
-</section>
-
-<!-- Section 7: Export -->
-<section class="card">
-  <div class="card-title">Export</div>
-  <div class="export-buttons">
-    <button id="whatsappBtn" class="btn btn-wa">Share via WhatsApp</button>
-    <button id="emailBtn" class="btn btn-email">Email PDF</button>
-  </div>
-</section>
+  <script src="script.js"></script>
+</body>
+</html>
