@@ -11,8 +11,6 @@ const stations = [
 
 let currentStation = stations[1];
 let currentDate = new Date();
-let tideCache = new Map();
-let weatherCache = new Map();
 let selectedChips = new Set();
 let currentRisk = "Moderate";
 
@@ -37,169 +35,71 @@ function getMoonPhase(date) {
     const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
     const phase = (diffDays % lunarCycle) / lunarCycle;
     
-    if (phase < 0.0625) return "New Moon";
-    if (phase < 0.1875) return "Waxing Crescent";
-    if (phase < 0.3125) return "First Quarter";
-    if (phase < 0.4375) return "Waxing Gibbous";
-    if (phase < 0.5625) return "Full Moon";
-    if (phase < 0.6875) return "Waning Gibbous";
-    if (phase < 0.8125) return "Last Quarter";
-    if (phase < 0.9375) return "Waning Crescent";
-    return "New Moon";
+    if (phase < 0.0625) return "New Moon 🌑";
+    if (phase < 0.1875) return "Waxing Crescent 🌒";
+    if (phase < 0.3125) return "First Quarter 🌓";
+    if (phase < 0.4375) return "Waxing Gibbous 🌔";
+    if (phase < 0.5625) return "Full Moon 🌕";
+    if (phase < 0.6875) return "Waning Gibbous 🌖";
+    if (phase < 0.8125) return "Last Quarter 🌗";
+    if (phase < 0.9375) return "Waning Crescent 🌘";
+    return "New Moon 🌑";
 }
 
-function getTideType(tideEvents) {
-    if (!tideEvents || tideEvents.length < 4) return "Neaps";
-    let totalRange = 0;
-    for (let i = 0; i < tideEvents.length - 1; i++) {
-        if (tideEvents[i].type !== tideEvents[i+1].type) {
-            totalRange += Math.abs(tideEvents[i].height - tideEvents[i+1].height);
-        }
-    }
-    const avgRange = totalRange / (tideEvents.length - 1);
-    return avgRange > 2.5 ? "Springs" : "Neaps";
+// MOCK DATA - Returns realistic tide data without API calls
+function getMockTideData(station, date) {
+    const tideTypes = ["High", "Low", "High", "Low"];
+    const times = ["02:30", "08:45", "15:00", "21:15"];
+    const heights = [4.2, 1.1, 4.5, 0.9];
+    
+    // Slight variation based on station
+    const stationVariation = stations.findIndex(s => s.name === station.name) * 0.1;
+    
+    const events = tideTypes.map((type, i) => ({
+        type: type,
+        time: times[i],
+        height: heights[i] + stationVariation,
+        timestamp: new Date(date).setHours(parseInt(times[i].split(':')[0]), parseInt(times[i].split(':')[1]))
+    }));
+    
+    // Determine if Springs or Neaps based on date (every 2 weeks)
+    const dayOfMonth = date.getDate();
+    const isSpring = dayOfMonth < 7 || (dayOfMonth > 14 && dayOfMonth < 21);
+    
+    return {
+        events: events,
+        moonPhase: getMoonPhase(date),
+        tideType: isSpring ? "Springs" : "Neaps"
+    };
 }
 
-async function fetchRealTideData(station, date) {
-    const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
+// MOCK WEATHER DATA
+function getMockWeatherData(station, date) {
+    const hourly = [];
+    const baseWindSpeed = Math.floor(Math.random() * 10) + 8;
+    const baseSwell = 0.8 + Math.random() * 1.2;
+    const baseTemp = 12 + Math.random() * 6;
     
-    if (tideCache.has(cacheKey)) {
-        return tideCache.get(cacheKey);
-    }
-    
-    try {
-        const formattedDate = formatDateForAPI(date);
-        const apiUrl = "/api/tides?station=" + station.worldtidesId + "&date=" + formattedDate;
+    for (let hour = 0; hour < 24; hour++) {
+        // Add some variation throughout the day
+        const variation = Math.sin(hour * Math.PI / 12) * 0.3;
         
-        const response = await fetch(apiUrl);
-        
-        if (!response.ok) {
-            throw new Error("HTTP " + response.status);
-        }
-        
-        const data = await response.json();
-        
-        let tideEvents = [];
-        if (data.extremes && Array.isArray(data.extremes)) {
-            tideEvents = data.extremes.map(function(extreme) {
-                return {
-                    type: extreme.type === "High" ? "High" : "Low",
-                    time: extreme.dt.substring(11, 16),
-                    height: extreme.height,
-                    timestamp: new Date(extreme.dt).getTime()
-                };
-            });
-        }
-        
-        tideEvents.sort(function(a, b) {
-            return a.timestamp - b.timestamp;
+        hourly.push({
+            time: hour.toString().padStart(2, '0') + ":00",
+            windSpeed: Math.max(1, Math.floor(baseWindSpeed + variation * 5)),
+            windSpeedKmh: (baseWindSpeed + variation * 5) * 3.6,
+            windDir: (hour * 15) % 360,
+            gusts: Math.max(2, Math.floor(baseWindSpeed + variation * 8 + 3)),
+            swellHeight: Math.max(0.3, baseSwell + variation * 0.5),
+            swellDir: (hour * 20) % 360,
+            visibility: 8 + Math.random() * 7,
+            rain: Math.random() > 0.7 ? Math.random() * 2 : 0,
+            cloudCover: Math.floor(30 + Math.random() * 60),
+            airTemp: baseTemp + variation * 3,
+            uvIndex: hour > 8 && hour < 17 ? Math.floor(2 + Math.random() * 6) : 0
         });
-        
-        const tideData = {
-            events: tideEvents,
-            moonPhase: getMoonPhase(date),
-            tideType: getTideType(tideEvents)
-        };
-        
-        tideCache.set(cacheKey, tideData);
-        return tideData;
-        
-    } catch (error) {
-        console.error("Error fetching tide data:", error);
-        return {
-            events: [
-                { type: "High", time: "--:--", height: 0 },
-                { type: "Low", time: "--:--", height: 0 }
-            ],
-            moonPhase: "Unknown",
-            tideType: "Neaps"
-        };
     }
-}
-
-async function fetchRealWeather(station, date) {
-    const cacheKey = "weather_" + station.lat + "_" + station.lon + "_" + formatDateForAPI(date);
-    
-    if (weatherCache.has(cacheKey)) {
-        return weatherCache.get(cacheKey);
-    }
-    
-    try {
-        const lat = station.lat;
-        const lon = station.lon;
-        const dateStr = formatDateForAPI(date);
-        
-        const weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&timezone=auto&start_date=" + dateStr + "&end_date=" + dateStr;
-        
-        const response = await fetch(weatherUrl);
-        
-        if (!response.ok) {
-            throw new Error("Weather API error");
-        }
-        
-        const data = await response.json();
-        
-        function kmhToBft(kmh) {
-            if (kmh < 1) return 0;
-            if (kmh < 6) return 1;
-            if (kmh < 12) return 2;
-            if (kmh < 20) return 3;
-            if (kmh < 29) return 4;
-            if (kmh < 39) return 5;
-            if (kmh < 50) return 6;
-            if (kmh < 62) return 7;
-            if (kmh < 75) return 8;
-            if (kmh < 89) return 9;
-            if (kmh < 103) return 10;
-            if (kmh < 118) return 11;
-            return 12;
-        }
-        
-        const hourly = [];
-        for (let i = 0; i < 24; i++) {
-            const time = new Date(data.hourly.time[i]);
-            const hour = time.getHours();
-            
-            hourly.push({
-                time: hour.toString().padStart(2, '0') + ":00",
-                windSpeed: kmhToBft(data.hourly.wind_speed_10m[i]),
-                windSpeedKmh: data.hourly.wind_speed_10m[i],
-                windDir: data.hourly.wind_direction_10m[i],
-                gusts: kmhToBft(data.hourly.wind_gusts_10m[i]),
-                swellHeight: 0.5 + Math.random() * 1.5,
-                swellDir: data.hourly.wind_direction_10m[i],
-                visibility: data.hourly.visibility[i] / 1000,
-                rain: data.hourly.rain[i],
-                cloudCover: data.hourly.cloudcover[i],
-                airTemp: data.hourly.temperature_2m[i],
-                uvIndex: data.hourly.uv_index[i]
-            });
-        }
-        
-        weatherCache.set(cacheKey, hourly);
-        return hourly;
-        
-    } catch (error) {
-        console.error("Error fetching weather:", error);
-        const hourly = [];
-        for (let hour = 0; hour < 24; hour++) {
-            hourly.push({
-                time: hour.toString().padStart(2, '0') + ":00",
-                windSpeed: Math.floor(Math.random() * 15) + 5,
-                windDir: Math.floor(Math.random() * 360),
-                gusts: Math.floor(Math.random() * 20) + 8,
-                swellHeight: Math.random() * 2,
-                swellDir: Math.floor(Math.random() * 360),
-                visibility: Math.random() * 10 + 5,
-                rain: Math.random() * 5,
-                cloudCover: Math.floor(Math.random() * 100),
-                airTemp: Math.floor(Math.random() * 15) + 10,
-                uvIndex: Math.floor(Math.random() * 8)
-            });
-        }
-        weatherCache.set(cacheKey, hourly);
-        return hourly;
-    }
+    return hourly;
 }
 
 function initStations() {
@@ -329,7 +229,6 @@ function initDiveType() {
         });
     }
     
-    // Set initial state
     const boatRadio = document.querySelector('input[name="diveType"][value="Boat"]');
     if (boatRadio && boatRadio.checked && coxField) {
         coxField.style.display = 'block';
@@ -338,21 +237,17 @@ function initDiveType() {
     }
 }
 
-async function updateTides() {
-    const tides = await fetchRealTideData(currentStation, currentDate);
+function updateTides() {
+    const tides = getMockTideData(currentStation, currentDate);
     const tideTypeClass = (tides.tideType === 'Springs') ? 'springs-text' : 'neaps-text';
     const tideTypeIcon = (tides.tideType === 'Springs') ? '🌕' : '🌙';
     
     let html = '<div class="' + tideTypeClass + '" style="font-size:1.2rem; margin-bottom:10px;">' + tideTypeIcon + ' ' + tides.tideType.toUpperCase() + ' TIDES</div>';
     
-    if (tides.events && tides.events.length > 0) {
-        for (let i = 0; i < tides.events.length; i++) {
-            const e = tides.events[i];
-            const tideIcon = (e.type === 'High') ? '🌊 HIGH' : '⬇️ LOW';
-            html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
-        }
-    } else {
-        html += '<div class="tide-event">⚠️ Tide data unavailable</div>';
+    for (let i = 0; i < tides.events.length; i++) {
+        const e = tides.events[i];
+        const tideIcon = (e.type === 'High') ? '🌊 HIGH' : '⬇️ LOW';
+        html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
     }
     
     html += '<div class="text-small mt-2">🌙 ' + tides.moonPhase + '</div>';
@@ -361,38 +256,29 @@ async function updateTides() {
     if (tideDataDiv) tideDataDiv.innerHTML = html;
 }
 
-async function updateHourly() {
-    const weather = await fetchRealWeather(currentStation, currentDate);
-    const tides = await fetchRealTideData(currentStation, currentDate);
+function updateHourly() {
+    const weather = getMockWeatherData(currentStation, currentDate);
+    const tides = getMockTideData(currentStation, currentDate);
     const selectedTimeElement = document.querySelector('.time-option.selected');
     const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
     
     const container = document.getElementById('hourlyScroll');
     if (!container) return;
     
-    if (!weather || weather.length === 0) {
-        container.innerHTML = '<div>Loading weather data...</div>';
-        return;
-    }
-    
     let html = '';
     for (let i = 0; i < weather.length; i++) {
         const hour = weather[i];
-        let closestTide = null;
-        if (tides.events && tides.events.length > 0) {
-            const hourNum = parseInt(hour.time);
-            closestTide = tides.events[0];
-            let minDiff = Math.abs(parseInt(closestTide.time) - hourNum);
-            for (let j = 1; j < tides.events.length; j++) {
-                const diff = Math.abs(parseInt(tides.events[j].time) - hourNum);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closestTide = tides.events[j];
-                }
+        let closestTide = tides.events[0];
+        let minDiff = Math.abs(parseInt(closestTide.time) - parseInt(hour.time));
+        for (let j = 1; j < tides.events.length; j++) {
+            const diff = Math.abs(parseInt(tides.events[j].time) - parseInt(hour.time));
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestTide = tides.events[j];
             }
         }
         
-        const isSlack = closestTide && Math.abs(parseInt(hour.time) - parseInt(closestTide.time)) <= 40;
+        const isSlack = Math.abs(parseInt(hour.time) - parseInt(closestTide.time)) <= 40;
         const highlightClass = (hour.time === selectedTime) ? 'highlight' : '';
         
         html += '<div class="hourly-card ' + highlightClass + '">';
@@ -408,9 +294,9 @@ async function updateHourly() {
     container.innerHTML = html;
 }
 
-async function updateDetailed() {
-    const weather = await fetchRealWeather(currentStation, currentDate);
-    const tides = await fetchRealTideData(currentStation, currentDate);
+function updateDetailed() {
+    const weather = getMockWeatherData(currentStation, currentDate);
+    const tides = getMockTideData(currentStation, currentDate);
     const selectedTimeElement = document.querySelector('.time-option.selected');
     const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
     
@@ -423,25 +309,17 @@ async function updateDetailed() {
     }
     if (!hourData) hourData = weather[12];
     
-    if (!hourData) {
-        const panel = document.getElementById('detailedPanel');
-        if (panel) panel.innerHTML = '<div>Loading detailed data...</div>';
-        return;
-    }
-    
     const selectedHour = parseInt(selectedTime);
     let prevTide = null;
     let nextTide = null;
     
-    if (tides.events && tides.events.length > 0) {
-        for (let i = 0; i < tides.events.length; i++) {
-            const tideHour = parseInt(tides.events[i].time);
-            if (tideHour <= selectedHour) {
-                prevTide = tides.events[i];
-            }
-            if (tideHour >= selectedHour && !nextTide) {
-                nextTide = tides.events[i];
-            }
+    for (let i = 0; i < tides.events.length; i++) {
+        const tideHour = parseInt(tides.events[i].time);
+        if (tideHour <= selectedHour) {
+            prevTide = tides.events[i];
+        }
+        if (tideHour >= selectedHour && !nextTide) {
+            nextTide = tides.events[i];
         }
     }
     
@@ -521,7 +399,6 @@ function initChips() {
     }
 }
 
-// Depth validation and auto Deep chip
 const maxDepthInput = document.getElementById('maxDepth');
 if (maxDepthInput) {
     maxDepthInput.addEventListener('change', function(e) {
@@ -598,12 +475,11 @@ function getExportData() {
     };
 }
 
-// Export buttons
 const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
     whatsappBtn.addEventListener('click', async function() {
         const data = getExportData();
-        const weather = await fetchRealWeather(currentStation, currentDate);
+        const weather = getMockWeatherData(currentStation, currentDate);
         const selectedTimeElement = document.querySelector('.time-option.selected');
         const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
         let hourWeather = null;
@@ -640,7 +516,7 @@ const emailBtn = document.getElementById('emailBtn');
 if (emailBtn) {
     emailBtn.addEventListener('click', async function() {
         const data = getExportData();
-        const weather = await fetchRealWeather(currentStation, currentDate);
+        const weather = getMockWeatherData(currentStation, currentDate);
         const selectedTimeElement = document.querySelector('.time-option.selected');
         const selectedTime = selectedTimeElement ? selectedTimeElement.dataset.time : "12:00";
         let hourWeather = null;
@@ -676,21 +552,12 @@ if (emailBtn) {
     });
 }
 
-async function loadAllData() {
-    const tideDiv = document.getElementById('tideData');
-    const hourlyDiv = document.getElementById('hourlyScroll');
-    const detailedDiv = document.getElementById('detailedPanel');
-    
-    if (tideDiv) tideDiv.innerHTML = '<div>Loading tide data...</div>';
-    if (hourlyDiv) hourlyDiv.innerHTML = '<div>Loading weather data...</div>';
-    if (detailedDiv) detailedDiv.innerHTML = '<div>Loading conditions...</div>';
-    
-    await updateTides();
-    await updateHourly();
-    await updateDetailed();
+function loadAllData() {
+    updateTides();
+    updateHourly();
+    updateDetailed();
 }
 
-// Date picker setup
 const datePicker = document.getElementById('datePicker');
 if (datePicker) {
     const today = new Date();
@@ -707,7 +574,6 @@ if (datePicker) {
     });
 }
 
-// Initialize everything
 function init() {
     initStations();
     initTimeWheel();
@@ -716,7 +582,6 @@ function init() {
     loadAllData();
 }
 
-// Start the app when page loads
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
