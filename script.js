@@ -62,7 +62,7 @@ function initTimeWheel() {
   wheel.innerHTML = times.map(t => `<div class="time-option" data-time="${t}">${t}</div>`).join('');
   
   const now = new Date();
-  const defaultTime = `${now.getHours().toString().padStart(2,'0')}:${Math.floor(now.getMinutes()/15)*15.toString().padStart(2,'0')}`;
+  const defaultTime = `${now.getHours().toString().padStart(2,'0')}:${(Math.floor(now.getMinutes()/15)*15).toString().padStart(2,'0')}`;
   
   const scrollToTime = (time) => {
     const el = document.querySelector(`.time-option[data-time="${time}"]`);
