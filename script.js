@@ -13,9 +13,11 @@ let currentStation = stations[1];
 let currentDate = new Date();
 let selectedChips = new Set();
 let currentRisk = "Moderate";
-let currentHour = currentDate.getHours();
-let currentMinute = currentDate.getMinutes();
-let isScrolling = false;
+
+// Get ACTUAL current time
+const now = new Date();
+let currentHour = now.getHours();
+let currentMinute = now.getMinutes();
 
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
@@ -166,8 +168,17 @@ function initTimeSpinners() {
     }
     minuteWheel.innerHTML = minuteHtml;
     
+    function scrollToValue(wheelElement, targetValue) {
+        const options = wheelElement.querySelectorAll('.spinner-option');
+        for (let i = 0; i < options.length; i++) {
+            if (parseInt(options[i].dataset.value) === targetValue) {
+                options[i].scrollIntoView({ block: 'center', behavior: 'auto' });
+                break;
+            }
+        }
+    }
+    
     function updateHighlightOnly() {
-        // Just update highlight classes without scrolling
         const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
         for (let i = 0; i < hourOptions.length; i++) {
             if (parseInt(hourOptions[i].dataset.value) === currentHour) {
@@ -187,19 +198,6 @@ function initTimeSpinners() {
         }
         
         updateTimeLabel();
-    }
-    
-    function scrollToSelected() {
-        // Only scroll if not already scrolling (prevent loops)
-        if (isScrolling) return;
-        isScrolling = true;
-        
-        const selectedHour = document.querySelector('#hourWheel .spinner-option.selected');
-        const selectedMinute = document.querySelector('#minuteWheel .spinner-option.selected');
-        if (selectedHour) selectedHour.scrollIntoView({ block: 'center', behavior: 'auto' });
-        if (selectedMinute) selectedMinute.scrollIntoView({ block: 'center', behavior: 'auto' });
-        
-        setTimeout(() => { isScrolling = false; }, 100);
     }
     
     // Hour wheel scroll handler
@@ -260,13 +258,15 @@ function initTimeSpinners() {
         }, 10);
     });
     
-    // Set initial values and scroll to them
+    // Initial highlight
     updateHighlightOnly();
     
-    // Use requestAnimationFrame to ensure DOM is ready before scrolling
-    requestAnimationFrame(() => {
-        scrollToSelected();
-    });
+    // Scroll to current values with delays to ensure DOM is ready
+    setTimeout(() => {
+        scrollToValue(hourWheel, currentHour);
+        scrollToValue(minuteWheel, currentMinute);
+        updateHighlightOnly();
+    }, 100);
 }
 
 function initDiveType() {
@@ -637,7 +637,6 @@ if (datePicker) {
         loadAllData();
     });
     
-    // AUTO-OPEN CALENDAR ON PAGE LOAD
     setTimeout(function() {
         if (datePicker.showPicker) {
             datePicker.showPicker();
