@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>DiveSense – Neon Dive Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 class="neon-title">🌊 DiveSense</h1>
+      <p class="subtitle">Neon Nautical Dive Intelligence</p>
+    </header>
+
+    <!-- Section 1a -->
+    <section class="card">
+      <h2>📍 Select Station</h2>
+      <div class="station-scroll" id="stationScroll"></div>
+    </section>
+
+    <!-- Section 1b -->
+    <section class="card">
+      <div class="form-row">
+        <label>📅 Select Date:</label>
+        <input type="date" id="datePicker" />
+      </div>
+      <div class="form-row">
+        <span>🤿 Dive Type:</span>
+        <label><input type="radio" name="diveType" value="Boat" checked> Boat Dive</label>
+        <label><input type="radio" name="diveType" value="Shore"> Shore Dive</label>
+      </div>
+      <div class="form-row">
+        <label id="timeLabel">⏱️ Lines Away Time:</label>
+        <div class="time-wheel-container">
+          <div class="time-wheel" id="timeWheel"></div>
+          <div class="time-inputs">
+            <input type="number" id="hourInput" min="0" max="23" step="1"> :
+            <input type="number" id="minuteInput" min="0" max="59" step="1">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2 -->
+    <section class="card" id="tidesSection">
+      <h2>🌊 Tide Timeline</h2>
+      <div id="tideData"></div>
+      <div class="footnote">📐 Tide heights from harmonic predictions (WorldTides). Times in DD-MM-YYYY.</div>
+    </section>
+
+    <!-- Section 3 -->
+    <section class="card">
+      <h2>⏳ Hourly Outlook</h2>
+      <div class="hourly-scroll" id="hourlyScroll"></div>
+    </section>
+
+    <!-- Section 4 -->
+    <section class="card">
+      <h2>📋 Detailed Conditions</h2>
+      <div id="detailedPanel"></div>
+      <div class="risk-bar">
+        <div class="risk-segment green">Low</div>
+        <div class="risk-segment yellow">Moderate</div>
+        <div class="risk-segment orange">Caution</div>
+        <div class="risk-segment red">High</div>
+      </div>
+      <div id="riskPointer" class="risk-pointer">⬆️ Risk Level</div>
+    </section>
+
+    <!-- Section 5 -->
+    <section class="card">
+      <h2>📝 Dive Plan Details</h2>
+      <input type="text" placeholder="Dive Site Name *" id="diveSite" class="form-input">
+      <input type="text" placeholder="DOD (Dive Officer) *" id="dod" class="form-input">
+      <input type="text" placeholder="DOD Assistant" id="dodAsst" class="form-input">
+      <div id="coxField">
+        <input type="text" placeholder="Cox'n Name(s) *" id="coxName" class="form-input">
+        <div class="radio-group">
+          <label><input type="radio" name="coxMode" value="Dedicated"> Dedicated Cox'n</label>
+          <label><input type="radio" name="coxMode" value="Split"> Split Cox'n</label>
+        </div>
+      </div>
+      <div class="radio-group">
+        <label><input type="radio" name="participation" value="Open to All" checked> Open to All</label>
+        <label><input type="radio" name="participation" value="Restricted to D2+"> Restricted to D2+</label>
+      </div>
+      <input type="number" id="maxDepth" placeholder="Max Depth (m) * [5-45]" min="5" max="45" class="form-input">
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="torches"> 🔦 Torches Required</label>
+        <label><input type="checkbox" id="lifeJackets" checked> 🦺 Life Jackets Required</label>
+      </div>
+    </section>
+
+    <!-- Section 6 -->
+    <section class="card">
+      <h2>🏷️ Dive Categories</h2>
+      <div class="chips" id="chipsContainer"></div>
+    </section>
+
+    <!-- Section 7 -->
+    <section class="card">
+      <h2>📤 Export Plan</h2>
+      <button id="whatsappBtn" class="btn-wa">📱 Share via WhatsApp</button>
+      <button id="pdfBtn" class="btn-pdf">📄 PDF Export</button>
+      <button id="emailBtn" class="btn-email">✉️ Share via Email</button>
+    </section>
+
+    <div class="advisory">
+      ⚠️ IMPORTANT: Always cross check weather, swell, and tide information with official sources. Conditions can change rapidly. This tool is for planning support only and does not replace local knowledge, Cox'n judgement, or official forecasts.
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
