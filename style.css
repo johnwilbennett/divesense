@@ -538,3 +538,12 @@ input[type="radio"], input[type="checkbox"] {
   filter: invert(0.6) sepia(1) hue-rotate(150deg);
   opacity: 0.8;
 }
+.date-picker {
+  cursor: pointer;
+}
+
+.date-picker::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.6) sepia(1) hue-rotate(150deg);
+  opacity: 0.8;
+}
