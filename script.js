@@ -139,7 +139,7 @@ function loadSavedPlans() {
   renderSavedPlans();
 }
 
-// REAL WORLD TIDES API with 6-hour cache
+// REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
 async function fetchRealTideData(station, date) {
   const cacheKey = `${station.worldtidesId}_${formatDateForAPI(date)}`;
   const now = Date.now();
@@ -158,7 +158,6 @@ async function fetchRealTideData(station, date) {
   
   try {
     const formattedDate = formatDateForAPI(date);
-    // Call Cloudflare function that proxies to WorldTides API
     const apiUrl = `/api/tides?station=${station.worldtidesId}&date=${formattedDate}`;
     
     console.log("Fetching tide data from:", apiUrl);
@@ -170,6 +169,12 @@ async function fetchRealTideData(station, date) {
     
     const data = await response.json();
     console.log("Tide API response received");
+    
+    // Check if API returned an error or no data
+    if (data.error || !data.extremes || data.extremes.length === 0) {
+      console.warn("No tide data available for this station/date");
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
+    }
     
     // Process WorldTides response
     let tideEvents = [];
@@ -187,7 +192,7 @@ async function fetchRealTideData(station, date) {
     
     // Determine Spring or Neap tides based on tidal range
     function getTideType(events) {
-      if (!events || events.length < 4) return "Neaps";
+      if (!events || events.length < 4) return "Unknown";
       let totalRange = 0;
       for (let i = 0; i < events.length - 1; i++) {
         if (events[i].type !== events[i+1].type) {
@@ -216,24 +221,9 @@ async function fetchRealTideData(station, date) {
     
   } catch (error) {
     console.error("Error fetching tide data:", error);
-    // Return fallback mock data
-    return getMockTideData(station, date);
+    // Return empty tide data on API failure
+    return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
   }
-}
-
-// Mock tide fallback
-function getMockTideData(station, date) {
-  const tideTypes = ["High", "Low", "High", "Low"];
-  const times = ["02:30", "08:45", "15:00", "21:15"];
-  const heights = [4.2, 1.1, 4.5, 0.9];
-  const stationVariation = stations.findIndex(s => s.name === station.name) * 0.1;
-  const events = tideTypes.map((type, i) => ({
-    type: type, time: times[i], height: heights[i] + stationVariation,
-    timestamp: new Date(date).setHours(parseInt(times[i].split(':')[0]), parseInt(times[i].split(':')[1]))
-  }));
-  const dayOfMonth = date.getDate();
-  const isSpring = dayOfMonth < 7 || (dayOfMonth > 14 && dayOfMonth < 21);
-  return { events, moonPhase: getMoonPhase(date), tideType: isSpring ? "Springs" : "Neaps" };
 }
 
 // REAL WEATHER API - Open-Meteo (free, no API key required)
@@ -297,35 +287,27 @@ async function fetchRealWeather(station, date) {
     
   } catch (error) {
     console.error("Error fetching weather:", error);
-    return getMockWeatherData(station, date);
+    // Return empty weather data on API failure
+    const emptyHourly = [];
+    for (let hour = 0; hour < 24; hour++) {
+      emptyHourly.push({
+        time: hour.toString().padStart(2, '0') + ":00",
+        windSpeed: 0,
+        windDir: 0,
+        gusts: 0,
+        swellHeight: 0,
+        swellPeriod: 0,
+        swellDir: 0,
+        visibility: 0,
+        rain: 0,
+        cloudCover: 0,
+        airTemp: 0,
+        uvIndex: 0,
+        error: true
+      });
+    }
+    return emptyHourly;
   }
-}
-
-// Mock weather fallback
-function getMockWeatherData(station, date) {
-  const hourly = [];
-  const baseWindSpeed = Math.floor(Math.random() * 10) + 8;
-  const baseSwell = 0.8 + Math.random() * 1.2;
-  const baseTemp = 12 + Math.random() * 6;
-  for (let hour = 0; hour < 24; hour++) {
-    const variation = Math.sin(hour * Math.PI / 12) * 0.3;
-    hourly.push({
-      time: hour.toString().padStart(2, '0') + ":00",
-      windSpeed: Math.max(1, Math.floor(baseWindSpeed + variation * 5)),
-      windSpeedKmh: (baseWindSpeed + variation * 5) * 3.6,
-      windDir: (hour * 15) % 360,
-      gusts: Math.max(2, Math.floor(baseWindSpeed + variation * 8 + 3)),
-      swellHeight: Math.max(0.3, baseSwell + variation * 0.5),
-      swellPeriod: Math.floor(6 + Math.random() * 5),
-      swellDir: (hour * 20) % 360,
-      visibility: 8 + Math.random() * 7,
-      rain: Math.random() > 0.7 ? Math.random() * 2 : 0,
-      cloudCover: Math.floor(30 + Math.random() * 60),
-      airTemp: baseTemp + variation * 3,
-      uvIndex: hour > 8 && hour < 17 ? Math.floor(2 + Math.random() * 6) : 0
-    });
-  }
-  return hourly;
 }
 
 async function getFormattedExportText() {
@@ -359,8 +341,10 @@ async function getFormattedExportText() {
   const categories = Array.from(selectedChips).join(', ');
   
   let weatherText = '';
-  if (hourWeather) {
+  if (hourWeather && !hourWeather.error) {
     weatherText = `${getWeatherIcon(hourWeather.cloudCover, hourWeather.rain)} Wind: ${hourWeather.windSpeed} Bft ${degreesToDirection(hourWeather.windDir)}, Gusts: ${hourWeather.gusts} Bft, Swell: ${hourWeather.swellHeight.toFixed(1)}m / ${hourWeather.swellPeriod}s, Visibility: ${hourWeather.visibility.toFixed(1)}km, Rain: ${hourWeather.rain.toFixed(1)}mm, Temp: ${hourWeather.airTemp.toFixed(1)}°C`;
+  } else {
+    weatherText = 'Weather data unavailable';
   }
   
   let text = `Date: ${formatDateDisplay(currentDate)}\n`;
@@ -387,6 +371,7 @@ async function getFormattedExportText() {
 }
 
 function isSlackWaterTime(tideEvents, hour, minute) {
+  if (!tideEvents || tideEvents.length === 0) return false;
   const totalMinutes = hour * 60 + minute;
   for (let i = 0; i < tideEvents.length; i++) {
     const tideParts = tideEvents[i].time.split(':');
@@ -411,7 +396,7 @@ function getClosestTides(tideEvents, targetHour, targetMinute) {
 }
 
 function getTideDirectionForHour(tideEvents, hour) {
-  if (!tideEvents || tideEvents.length < 2) return "Unknown";
+  if (!tideEvents || tideEvents.length < 2) return "No Data";
   const targetMinutes = hour * 60;
   let prevTide = null, nextTide = null;
   for (let i = 0; i < tideEvents.length; i++) {
@@ -420,7 +405,7 @@ function getTideDirectionForHour(tideEvents, hour) {
     if (tideMinutes <= targetMinutes) prevTide = tideEvents[i];
     if (tideMinutes >= targetMinutes && !nextTide) nextTide = tideEvents[i];
   }
-  if (!prevTide || !nextTide) return "Unknown";
+  if (!prevTide || !nextTide) return "No Data";
   const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
   const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
   if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
@@ -430,7 +415,7 @@ function getTideDirectionForHour(tideEvents, hour) {
 }
 
 function getTideDirection(tideEvents, targetHour, targetMinute) {
-  if (!tideEvents || tideEvents.length < 2) return "Unknown";
+  if (!tideEvents || tideEvents.length < 2) return "No Data";
   const targetMinutes = targetHour * 60 + targetMinute;
   let prevTide = null, nextTide = null;
   for (let i = 0; i < tideEvents.length; i++) {
@@ -439,7 +424,7 @@ function getTideDirection(tideEvents, targetHour, targetMinute) {
     if (tideMinutes <= targetMinutes) prevTide = tideEvents[i];
     if (tideMinutes >= targetMinutes && !nextTide) nextTide = tideEvents[i];
   }
-  if (!prevTide || !nextTide) return "Unknown";
+  if (!prevTide || !nextTide) return "No Data";
   const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
   const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
   if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
@@ -670,18 +655,25 @@ function renderChips() {
 
 async function updateTides() {
   const tides = await fetchRealTideData(currentStation, currentDate);
-  const tideTypeClass = tides.tideType === 'Springs' ? 'springs-text' : 'neaps-text';
-  const tideTypeIcon = tides.tideType === 'Springs' ? '🌕' : '🌙';
-  let html = `<div class="${tideTypeClass}" style="font-size:1.2rem; margin-bottom:10px;">${tideTypeIcon} ${tides.tideType.toUpperCase()} TIDES</div>`;
   
-  if (tides.events && tides.events.length > 0) {
-    tides.events.forEach(e => {
-      const tideIcon = e.type === 'High' ? '🌊 HIGH' : '⬇️ LOW';
-      html += `<div class="tide-event"><span>${tideIcon}</span><span>${e.time}</span><span>${e.height.toFixed(2)}m</span></div>`;
-    });
-  } else {
-    html += `<div class="tide-event">⚠️ Tide data unavailable</div>`;
+  if (tides.error || !tides.events || tides.events.length === 0) {
+    const tideDiv = document.getElementById('tideData');
+    if (tideDiv) tideDiv.innerHTML = '<div class="tide-event">⚠️ Tide data unavailable for this station/date</div>';
+    return;
   }
+  
+  const tideTypeClass = tides.tideType === 'Springs' ? 'springs-text' : (tides.tideType === 'Neaps' ? 'neaps-text' : '');
+  const tideTypeIcon = tides.tideType === 'Springs' ? '🌕' : (tides.tideType === 'Neaps' ? '🌙' : '');
+  
+  let html = '';
+  if (tides.tideType !== 'Unknown') {
+    html += `<div class="${tideTypeClass}" style="font-size:1.2rem; margin-bottom:10px;">${tideTypeIcon} ${tides.tideType.toUpperCase()} TIDES</div>`;
+  }
+  
+  tides.events.forEach(e => {
+    const tideIcon = e.type === 'High' ? '🌊 HIGH' : '⬇️ LOW';
+    html += `<div class="tide-event"><span>${tideIcon}</span><span>${e.time}</span><span>${e.height.toFixed(2)}m</span></div>`;
+  });
   
   html += `<div class="text-small mt-2">🌙 ${tides.moonPhase}</div>`;
   const tideDiv = document.getElementById('tideData');
@@ -694,11 +686,22 @@ async function updateHourly() {
   const selectedHour = currentHour;
   const container = document.getElementById('hourlyScroll');
   if (!container) return;
+  
+  if (weather.length === 0 || (weather[0] && weather[0].error)) {
+    container.innerHTML = '<div style="text-align:center; padding:20px;">⚠️ Weather data unavailable</div>';
+    return;
+  }
+  
   let html = '';
   for (const hour of weather) {
     const hourNum = parseInt(hour.time);
     const tideDirection = getTideDirectionForHour(tides.events, hourNum);
-    let tideIcon = tideDirection.includes('Flooding') ? '⬆️' : (tideDirection.includes('Ebbing') ? '⬇️' : '⚡');
+    let tideIcon = '';
+    if (tideDirection.includes('Flooding')) tideIcon = '⬆️';
+    else if (tideDirection.includes('Ebbing')) tideIcon = '⬇️';
+    else if (tideDirection.includes('Slack')) tideIcon = '⚡';
+    else tideIcon = '❓';
+    
     const weatherIcon = getWeatherIcon(hour.cloudCover, hour.rain);
     const highlightClass = hourNum === selectedHour ? 'highlight' : '';
     html += `<div class="hourly-card ${highlightClass}">
@@ -721,12 +724,17 @@ async function updateDetailed() {
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
   const tideDirection = getTideDirection(tides.events, selectedHour, selectedMinute);
   
-  let riskScore = (hourData.windSpeed / 12) * 0.4 + (hourData.swellHeight / 4) * 0.4 + (1 - (hourData.visibility / 20)) * 0.2;
-  riskScore = Math.min(1, Math.max(0, riskScore));
-  let riskLevel = "Low", riskPercent = 12.5;
-  if (riskScore > 0.75) { riskLevel = "High"; riskPercent = 87.5; }
-  else if (riskScore > 0.5) { riskLevel = "Caution"; riskPercent = 62.5; }
-  else if (riskScore > 0.25) { riskLevel = "Moderate"; riskPercent = 37.5; }
+  let riskScore = 0;
+  let riskLevel = "Low";
+  let riskPercent = 12.5;
+  
+  if (hourData && !hourData.error) {
+    riskScore = (hourData.windSpeed / 12) * 0.4 + (hourData.swellHeight / 4) * 0.4 + (1 - (hourData.visibility / 20)) * 0.2;
+    riskScore = Math.min(1, Math.max(0, riskScore));
+    if (riskScore > 0.75) { riskLevel = "High"; riskPercent = 87.5; }
+    else if (riskScore > 0.5) { riskLevel = "Caution"; riskPercent = 62.5; }
+    else if (riskScore > 0.25) { riskLevel = "Moderate"; riskPercent = 37.5; }
+  }
   currentRisk = riskLevel;
   
   const riskBar = document.getElementById('riskBarGradient');
@@ -740,24 +748,30 @@ async function updateDetailed() {
   if (riskLevel === 'High') riskColor = '#ff8888';
   else if (riskLevel === 'Caution') riskColor = '#ffaa66';
   else if (riskLevel === 'Moderate') riskColor = '#ffff88';
-  const weatherIcon = getWeatherIcon(hourData.cloudCover, hourData.rain);
   
-  let html = `
-    <div class="detail-row"><strong>Wind:</strong> ${weatherIcon} ${hourData.windSpeed} Bft ${degreesToDirection(hourData.windDir)} (Gusts ${hourData.gusts} Bft)</div>
-    <div class="detail-row"><strong>Visibility:</strong> ${hourData.visibility.toFixed(1)} km</div>
-    <div class="detail-row"><strong>Rain:</strong> ${hourData.rain.toFixed(1)} mm</div>
-    <div class="detail-row"><strong>Cloud Cover:</strong> ${hourData.cloudCover}%</div>
-    <div class="detail-row"><strong>Air Temp:</strong> ${hourData.airTemp.toFixed(1)}°C</div>
-    <div class="detail-row"><strong>UV Index:</strong> ${hourData.uvIndex}</div>
-    <div class="detail-row"><strong>Swell:</strong> ${hourData.swellHeight.toFixed(1)}m / ${hourData.swellPeriod}s from ${degreesToDirection(hourData.swellDir)}</div>`;
+  let html = '';
   
-  if (isSlackWater) {
+  if (hourData && !hourData.error) {
+    const weatherIcon = getWeatherIcon(hourData.cloudCover, hourData.rain);
+    html = `
+      <div class="detail-row"><strong>Wind:</strong> ${weatherIcon} ${hourData.windSpeed} Bft ${degreesToDirection(hourData.windDir)} (Gusts ${hourData.gusts} Bft)</div>
+      <div class="detail-row"><strong>Visibility:</strong> ${hourData.visibility.toFixed(1)} km</div>
+      <div class="detail-row"><strong>Rain:</strong> ${hourData.rain.toFixed(1)} mm</div>
+      <div class="detail-row"><strong>Cloud Cover:</strong> ${hourData.cloudCover}%</div>
+      <div class="detail-row"><strong>Air Temp:</strong> ${hourData.airTemp.toFixed(1)}°C</div>
+      <div class="detail-row"><strong>UV Index:</strong> ${hourData.uvIndex}</div>
+      <div class="detail-row"><strong>Swell:</strong> ${hourData.swellHeight.toFixed(1)}m / ${hourData.swellPeriod}s from ${degreesToDirection(hourData.swellDir)}</div>`;
+  } else {
+    html = `<div class="detail-row">⚠️ Weather data unavailable</div>`;
+  }
+  
+  if (isSlackWater && tides.events.length > 0) {
     html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
   }
   
   html += `<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel}</span></div>`;
   
-  if (prevTide || nextTide) {
+  if ((prevTide || nextTide) && tides.events.length > 0) {
     html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
     if (prevTide) {
       const timeDiff = Math.abs((selectedHour * 60 + selectedMinute) - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
@@ -768,8 +782,12 @@ async function updateDetailed() {
       html += `<div class="detail-row">→ Next ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m) - ${Math.floor(timeDiff / 60)}h ${timeDiff % 60}m after</div>`;
     }
     html += `<div class="detail-row"><strong>🌊 Tide Direction:</strong> ${tideDirection}</div>`;
-    html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)'}</div>`;
+    if (tides.tideType !== 'Unknown') {
+      html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)'}</div>`;
+    }
     html += `<div class="detail-row">🌙 ${tides.moonPhase}</div>`;
+  } else if (tides.events.length === 0) {
+    html += `<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>`;
   }
   
   const panel = document.getElementById('detailedPanel');
