@@ -19,6 +19,9 @@ const now = new Date();
 let currentHour = now.getHours();
 let currentMinute = now.getMinutes();
 
+// Prevent scroll events from triggering during programmatic scrolls
+let isProgrammaticScroll = false;
+
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
 function degreesToDirection(deg) {
@@ -156,8 +159,7 @@ function initTimeSpinners() {
     let hourHtml = '';
     for (let h = 0; h < 24; h++) {
         const hourStr = h.toString().padStart(2, '0');
-        const isSelected = (h === currentHour);
-        hourHtml += '<div class="spinner-option' + (isSelected ? ' selected' : '') + '" data-value="' + h + '">' + hourStr + '</div>';
+        hourHtml += '<div class="spinner-option" data-value="' + h + '">' + hourStr + '</div>';
     }
     hourWheel.innerHTML = hourHtml;
     
@@ -165,24 +167,12 @@ function initTimeSpinners() {
     let minuteHtml = '';
     for (let m = 0; m < 60; m++) {
         const minuteStr = m.toString().padStart(2, '0');
-        const isSelected = (m === currentMinute);
-        minuteHtml += '<div class="spinner-option' + (isSelected ? ' selected' : '') + '" data-value="' + m + '">' + minuteStr + '</div>';
+        minuteHtml += '<div class="spinner-option" data-value="' + m + '">' + minuteStr + '</div>';
     }
     minuteWheel.innerHTML = minuteHtml;
     
-    // Function to scroll to a specific value without animation
-    function scrollToValue(wheelElement, targetValue) {
-        const options = wheelElement.querySelectorAll('.spinner-option');
-        for (let i = 0; i < options.length; i++) {
-            if (parseInt(options[i].dataset.value) === targetValue) {
-                options[i].scrollIntoView({ block: 'center', behavior: 'auto' });
-                break;
-            }
-        }
-    }
-    
-    // Function to update highlight only
-    function updateHighlightOnly() {
+    // Function to update highlights
+    function updateHighlights() {
         const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
         for (let i = 0; i < hourOptions.length; i++) {
             if (parseInt(hourOptions[i].dataset.value) === currentHour) {
@@ -204,66 +194,102 @@ function initTimeSpinners() {
         updateTimeLabel();
     }
     
-    // Prevent touch/mouse drag that moves the wheel position
-    function preventDragMovement(wheelElement) {
-        wheelElement.addEventListener('touchstart', function(e) {
-            // Allow scrolling but prevent page drag
-            e.stopPropagation();
-        }, { passive: false });
-        
-        wheelElement.addEventListener('mousedown', function(e) {
-            // Prevent default to avoid accidental text selection
-            e.preventDefault();
-        });
+    // Function to scroll to a value without triggering scroll events
+    function scrollToValueWithoutTrigger(wheelElement, targetValue) {
+        isProgrammaticScroll = true;
+        const options = wheelElement.querySelectorAll('.spinner-option');
+        for (let i = 0; i < options.length; i++) {
+            if (parseInt(options[i].dataset.value) === targetValue) {
+                options[i].scrollIntoView({ block: 'center', behavior: 'auto' });
+                break;
+            }
+        }
+        setTimeout(() => {
+            isProgrammaticScroll = false;
+        }, 100);
     }
-
-    // Minute wheel scroll handler
-    let minuteScrollTimeout;
-    minuteWheel.addEventListener('scroll', function() {
-        if (minuteScrollTimeout) clearTimeout(minuteScrollTimeout);
-        minuteScrollTimeout = setTimeout(() => {
-            const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
-            const options = document.querySelectorAll('#minuteWheel .spinner-option');
+    
+    // Hour wheel scroll handler
+    let hourScrollTimeout;
+    hourWheel.addEventListener('scroll', function() {
+        if (isProgrammaticScroll) return;
+        
+        if (hourScrollTimeout) clearTimeout(hourScrollTimeout);
+        hourScrollTimeout = setTimeout(() => {
+            const wheelRect = hourWheel.getBoundingClientRect();
+            const wheelCenter = wheelRect.top + wheelRect.height / 2;
+            
+            const options = document.querySelectorAll('#hourWheel .spinner-option');
             let closest = null;
             let minDist = Infinity;
+            
             for (let i = 0; i < options.length; i++) {
                 const opt = options[i];
                 const rect = opt.getBoundingClientRect();
-                const wheelRect = minuteWheel.getBoundingClientRect();
                 const optCenter = rect.top + rect.height / 2;
-                const wheelCenter = wheelRect.top + wheelRect.height / 2;
                 const dist = Math.abs(optCenter - wheelCenter);
                 if (dist < minDist) {
                     minDist = dist;
                     closest = opt;
                 }
             }
+            
+            if (closest) {
+                const newHour = parseInt(closest.dataset.value);
+                if (newHour !== currentHour) {
+                    currentHour = newHour;
+                    updateHighlights();
+                    updateDetailed();
+                    updateHourly();
+                }
+            }
+        }, 30);
+    });
+    
+    // Minute wheel scroll handler
+    let minuteScrollTimeout;
+    minuteWheel.addEventListener('scroll', function() {
+        if (isProgrammaticScroll) return;
+        
+        if (minuteScrollTimeout) clearTimeout(minuteScrollTimeout);
+        minuteScrollTimeout = setTimeout(() => {
+            const wheelRect = minuteWheel.getBoundingClientRect();
+            const wheelCenter = wheelRect.top + wheelRect.height / 2;
+            
+            const options = document.querySelectorAll('#minuteWheel .spinner-option');
+            let closest = null;
+            let minDist = Infinity;
+            
+            for (let i = 0; i < options.length; i++) {
+                const opt = options[i];
+                const rect = opt.getBoundingClientRect();
+                const optCenter = rect.top + rect.height / 2;
+                const dist = Math.abs(optCenter - wheelCenter);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = opt;
+                }
+            }
+            
             if (closest) {
                 const newMinute = parseInt(closest.dataset.value);
                 if (newMinute !== currentMinute) {
                     currentMinute = newMinute;
-                    updateHighlightOnly();
+                    updateHighlights();
                     updateDetailed();
                     updateHourly();
                 }
-                // Snap to the closest value
-                closest.scrollIntoView({ block: 'center', behavior: 'auto' });
             }
-        }, 50);
+        }, 30);
     });
     
-    // Apply drag prevention
-    preventDragMovement(hourWheel);
-    preventDragMovement(minuteWheel);
+    // Initial setup
+    updateHighlights();
     
-    // Initial highlight
-    updateHighlightOnly();
-    
-    // Scroll to current values
+    // Scroll to current values after a short delay
     setTimeout(() => {
-        scrollToValue(hourWheel, currentHour);
-        scrollToValue(minuteWheel, currentMinute);
-        updateHighlightOnly();
+        scrollToValueWithoutTrigger(hourWheel, currentHour);
+        scrollToValueWithoutTrigger(minuteWheel, currentMinute);
     }, 100);
 }
 
