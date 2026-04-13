@@ -140,6 +140,7 @@ function loadSavedPlans() {
 }
 
 // REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
+// REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
 async function fetchRealTideData(station, date) {
   const cacheKey = `${station.worldtidesId}_${formatDateForAPI(date)}`;
   const now = Date.now();
@@ -163,17 +164,34 @@ async function fetchRealTideData(station, date) {
     console.log("Fetching tide data from:", apiUrl);
     const response = await fetch(apiUrl);
     
+    console.log("Response status:", response.status);
+    console.log("Content-Type:", response.headers.get('content-type'));
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error("Non-JSON response received:", text.substring(0, 200));
+      throw new Error(`Expected JSON but received ${contentType || 'unknown content type'}`);
+    }
+    
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
     
     const data = await response.json();
-    console.log("Tide API response received");
+    console.log("Tide API response received", data);
     
     // Check if API returned an error or no data
-    if (data.error || !data.extremes || data.extremes.length === 0) {
+    if (data.error) {
+      console.warn("API error:", data.error);
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: data.error };
+    }
+    
+    if (!data.extremes || data.extremes.length === 0) {
       console.warn("No tide data available for this station/date");
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide data available" };
     }
     
     // Process WorldTides response
@@ -216,13 +234,19 @@ async function fetchRealTideData(station, date) {
       timestamp: now
     });
     
-    console.log("Tide data cached for", cacheKey);
+    console.log("Tide data cached for", cacheKey, `(${tideEvents.length} events)`);
     return tideData;
     
   } catch (error) {
     console.error("Error fetching tide data:", error);
-    // Return empty tide data on API failure
-    return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
+    // Return empty tide data on API failure with error message
+    return { 
+      events: [], 
+      moonPhase: getMoonPhase(date), 
+      tideType: "Unknown", 
+      error: true, 
+      errorMessage: error.message 
+    };
   }
 }
 

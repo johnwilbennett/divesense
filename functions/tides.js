@@ -1,8 +1,25 @@
 export async function onRequest(context) {
   const { request, env } = context;
   
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+  
   if (request.method !== 'GET') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
   }
   
   const url = new URL(request.url);
@@ -10,7 +27,13 @@ export async function onRequest(context) {
   const date = url.searchParams.get('date');
   
   if (!station || !date) {
-    return new Response('Missing station or date parameter', { status: 400 });
+    return new Response(JSON.stringify({ error: 'Missing station or date parameter' }), {
+      status: 400,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
   }
   
   const WT_API_KEY = env.WORLDTIDES_API_KEY;
@@ -22,7 +45,10 @@ export async function onRequest(context) {
       message: 'Please set WORLDTIDES_API_KEY in Cloudflare Pages environment variables'
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
   
@@ -30,20 +56,40 @@ export async function onRequest(context) {
     const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&station=${station}&key=${WT_API_KEY}`;
     
     console.log(`Fetching tides for ${station} on ${date}`);
+    console.log(`API URL: ${apiUrl.replace(WT_API_KEY, 'HIDDEN_KEY')}`);
     
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
-      throw new Error(`WorldTides API returned ${response.status}`);
+      throw new Error(`WorldTides API returned ${response.status}: ${response.statusText}`);
     }
     
     const data = await response.json();
     
+    // Check if the response contains an error
+    if (data.error) {
+      console.error('WorldTides API error:', data.error);
+      return new Response(JSON.stringify({ 
+        error: data.error,
+        message: 'WorldTides API returned an error'
+      }), {
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache'
+        }
+      });
+    }
+    
+    // Return successful response with 6-hour cache
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=21600' // 6-hour cache at CDN level
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=21600',
+        'CDN-Cache-Control': 'public, max-age=21600'
       }
     });
     
@@ -55,7 +101,10 @@ export async function onRequest(context) {
       message: error.message
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
 }
