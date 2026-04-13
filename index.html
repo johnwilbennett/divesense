@@ -11,6 +11,9 @@
     <header>
       <h1 class="neon-title">🌊 DiveSense</h1>
       <p class="subtitle">NEON AQUATIC EDITION</p>
+      <div class="theme-toggle">
+        <button id="themeToggleBtn" class="theme-btn">🌙 Deep Mode</button>
+      </div>
     </header>
 
     <!-- Station Selector -->
@@ -58,6 +61,12 @@
       <div class="card-title">Tides</div>
       <div id="tideData">Loading tides...</div>
       <div class="text-small mt-2">Heights relative to LAT (Lowest Astronomical Tide)</div>
+    </section>
+
+    <!-- Tide Graph -->
+    <section class="card">
+      <div class="card-title">Tide Graph</div>
+      <canvas id="tideGraph" width="500" height="150" style="width:100%; height:auto; background: rgba(10,26,47,0.5); border-radius: 12px;"></canvas>
     </section>
 
     <!-- Hourly Conditions -->
@@ -120,12 +129,22 @@
       <div class="chips" id="chipsContainer"></div>
     </section>
 
+    <!-- Saved Dive Plans -->
+    <section class="card">
+      <div class="card-title">Saved Dive Plans</div>
+      <div class="saved-plans" id="savedPlansContainer">
+        <div class="saved-plans-empty">No saved plans yet. Save a plan below.</div>
+      </div>
+    </section>
+
     <!-- Export -->
     <section class="card">
       <div class="card-title">Export</div>
       <div class="export-buttons">
         <button id="whatsappBtn" class="btn btn-wa">Share via WhatsApp</button>
         <button id="emailBtn" class="btn btn-email">Email PDF</button>
+        <button id="copyBtn" class="btn btn-copy">📋 Copy Plan</button>
+        <button id="savePlanBtn" class="btn btn-save">💾 Save Plan</button>
       </div>
     </section>
 
@@ -133,6 +152,11 @@
     <div class="advisory">
       ⚠️ IMPORTANT: Always cross-check weather, swell, and tide information with official sources. Conditions can change rapidly. This tool is for planning support only and does not replace local knowledge, Cox'n judgement, or official forecasts.
     </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner"></div>
   </div>
 
   <script src="script.js"></script>
