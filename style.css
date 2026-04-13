@@ -597,3 +597,134 @@ input[type="radio"], input[type="checkbox"] {
 .spinner-option:active {
   background: rgba(47, 255, 238, 0.1);
 }
+/* Station Card - Enhanced highlighting */
+.station-card {
+  background: #0a1a2f;
+  border-radius: 30px;
+  padding: 8px 18px;
+  min-width: 90px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid #1AA7A7;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.station-card small {
+  font-size: 10px;
+  color: #1AA7A7;
+  display: block;
+}
+
+.station-card.active {
+  background: linear-gradient(135deg, #2FFFEF20 0%, #00AAFF30 100%);
+  border: 2px solid #2FFFEF;
+  box-shadow: 0 0 20px rgba(47, 255, 238, 0.5), inset 0 0 10px rgba(47, 255, 238, 0.2);
+  transform: scale(1.02);
+}
+
+.station-card.active small {
+  color: #2FFFEF;
+  text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
+}
+
+/* Hourly Card - Enhanced highlighting */
+.hourly-card {
+  min-width: 110px;
+  background: #0a1a2f;
+  border-radius: 14px;
+  padding: 10px;
+  border: 2px solid #1AA7A7;
+  transition: all 0.2s;
+}
+
+.hourly-card.highlight {
+  border: 2px solid #2FFFEF;
+  background: linear-gradient(135deg, #2FFFEF15 0%, #00AAFF25 100%);
+  box-shadow: 0 0 20px rgba(47, 255, 238, 0.4), inset 0 0 10px rgba(47, 255, 238, 0.1);
+  transform: scale(1.02);
+}
+
+.hourly-card.highlight strong {
+  color: #2FFFEF;
+  text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
+  font-size: 18px;
+}
+
+/* Time Picker - Narrower spinners (rectangles) */
+.time-picker {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  background: #0a1a2f;
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.time-spinner {
+  flex: 0 0 auto;
+  text-align: center;
+  width: 70px;  /* Narrower width */
+}
+
+.spinner-label {
+  font-size: 10px;
+  color: #1AA7A7;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.spinner-wheel {
+  height: 200px;
+  width: 100%;  /* Full width of parent (70px) */
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  background: #01061a;
+  border-radius: 12px;
+  border: 2px solid #1AA7A7;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.spinner-wheel::-webkit-scrollbar {
+  width: 2px;
+}
+
+.spinner-wheel::-webkit-scrollbar-track {
+  background: #0a1a2f;
+  border-radius: 10px;
+}
+
+.spinner-wheel::-webkit-scrollbar-thumb {
+  background: #2FFFEF;
+  border-radius: 10px;
+}
+
+.spinner-option {
+  scroll-snap-align: center;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 16px;
+  font-family: monospace;
+  color: #1AA7A7;
+  cursor: pointer;
+  transition: all 0.1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.spinner-option.selected {
+  color: #2FFFEF;
+  text-shadow: 0 0 8px rgba(47, 255, 238, 0.8);
+  font-weight: bold;
+  background: rgba(47, 255, 238, 0.25);
+  transform: scale(1.08);
+  border-radius: 8px;
+}
+
+.spinner-option:active {
+  background: rgba(47, 255, 238, 0.15);
+}
