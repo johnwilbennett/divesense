@@ -880,7 +880,13 @@ async function updateTides() {
     html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
   }
   
+  // Add LAT explanation
+  html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
+  html += '📐 Heights are relative to <strong>LAT (Lowest Astronomical Tide)</strong> - the lowest tide level predicted under average meteorological conditions.';
+  html += '<br>Negative values indicate tides below LAT.';
+  html += '</div>';
   html += '<div class="text-small mt-2">🌙 ' + tides.moonPhase + '</div>';
+  
   const tideDiv = document.getElementById('tideData');
   if (tideDiv) tideDiv.innerHTML = html;
 }
