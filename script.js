@@ -675,3 +675,44 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+// Create bioluminescent floating particles
+function createParticles() {
+  const particlesContainer = document.createElement('div');
+  particlesContainer.className = 'particles';
+  document.body.appendChild(particlesContainer);
+  
+  const particleCount = 30;
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    
+    const size = Math.random() * 4 + 2;
+    const duration = Math.random() * 15 + 8;
+    const delay = Math.random() * 20;
+    const opacity = Math.random() * 0.4 + 0.2;
+    const drift = (Math.random() - 0.5) * 100;
+    const startX = Math.random() * window.innerWidth;
+    
+    particle.style.width = size + 'px';
+    particle.style.height = size + 'px';
+    particle.style.left = startX + 'px';
+    particle.style.setProperty('--duration', duration + 's');
+    particle.style.setProperty('--opacity', opacity);
+    particle.style.setProperty('--drift', drift + 'px');
+    particle.style.animationDelay = delay + 's';
+    
+    particlesContainer.appendChild(particle);
+  }
+}
+
+// Call this after init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+    createParticles();
+  });
+} else {
+  init();
+  createParticles();
+}
