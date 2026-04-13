@@ -630,7 +630,7 @@ input[type="radio"], input[type="checkbox"] {
 /* Utility */
 .text-small { 
   font-size: 10px; 
-  color: #00FFAA;
+  color: #07e79c;
   text-shadow: 0 0 3px rgba(0, 255, 170, 0.3);
 }
 .mt-2 { margin-top: 10px; }
