@@ -15,7 +15,7 @@ let selectedChips = new Set();
 let currentRisk = "Moderate";
 let currentHour = new Date().getHours();
 let currentMinute = new Date().getMinutes();
-let isProgrammaticScroll = false;
+let currentRiskPercent = 37.5;
 let currentCalendarMonth = new Date();
 
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
@@ -68,6 +68,36 @@ function updateTimeLabel() {
     if (timeLabel) {
         timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span>';
     }
+}
+
+// Determine if tide is flooding or ebbing
+function getTideDirection(tideEvents, targetHour) {
+    if (!tideEvents || tideEvents.length < 2) return "Unknown";
+    
+    // Find the tide before and after the target time
+    let prevTide = null;
+    let nextTide = null;
+    
+    for (let i = 0; i < tideEvents.length; i++) {
+        const tideHour = parseInt(tideEvents[i].time);
+        if (tideHour <= targetHour) {
+            prevTide = tideEvents[i];
+        }
+        if (tideHour >= targetHour && !nextTide) {
+            nextTide = tideEvents[i];
+        }
+    }
+    
+    if (!prevTide || !nextTide) return "Unknown";
+    
+    // If prev tide is High and next is Low, water is ebbing (going out)
+    // If prev tide is Low and next is High, water is flooding (coming in)
+    if (prevTide.type === "High" && nextTide.type === "Low") {
+        return "Ebbing (Outgoing) 🌊⬇️";
+    } else if (prevTide.type === "Low" && nextTide.type === "High") {
+        return "Flooding (Incoming) 🌊⬆️";
+    }
+    return "Slack Water ⚡";
 }
 
 // MOCK DATA
@@ -231,23 +261,31 @@ function initStations() {
     });
 }
 
-// TIME SPINNERS
+// TIME SPINNERS - FIXED
 function initTimeSpinners() {
     const hourWheel = document.getElementById('hourWheel');
     const minuteWheel = document.getElementById('minuteWheel');
     if (!hourWheel || !minuteWheel) return;
     
-    let hourHtml = '';
-    for (let h = 0; h < 24; h++) {
-        hourHtml += `<div class="spinner-option" data-value="${h}">${h.toString().padStart(2, '0')}</div>`;
-    }
-    hourWheel.innerHTML = hourHtml;
+    // Clear and rebuild
+    hourWheel.innerHTML = '';
+    minuteWheel.innerHTML = '';
     
-    let minuteHtml = '';
-    for (let m = 0; m < 60; m++) {
-        minuteHtml += `<div class="spinner-option" data-value="${m}">${m.toString().padStart(2, '0')}</div>`;
+    for (let h = 0; h < 24; h++) {
+        const option = document.createElement('div');
+        option.className = 'spinner-option';
+        option.textContent = h.toString().padStart(2, '0');
+        option.dataset.value = h;
+        hourWheel.appendChild(option);
     }
-    minuteWheel.innerHTML = minuteHtml;
+    
+    for (let m = 0; m < 60; m++) {
+        const option = document.createElement('div');
+        option.className = 'spinner-option';
+        option.textContent = m.toString().padStart(2, '0');
+        option.dataset.value = m;
+        minuteWheel.appendChild(option);
+    }
     
     function updateHighlights() {
         document.querySelectorAll('#hourWheel .spinner-option').forEach(opt => {
@@ -268,48 +306,74 @@ function initTimeSpinners() {
     }
     
     function scrollToValue(wheel, value) {
-        isProgrammaticScroll = true;
-        const option = Array.from(wheel.querySelectorAll('.spinner-option')).find(opt => parseInt(opt.dataset.value) === value);
-        if (option) option.scrollIntoView({ block: 'center', behavior: 'auto' });
-        setTimeout(() => { isProgrammaticScroll = false; }, 100);
+        const option = Array.from(wheel.children).find(opt => parseInt(opt.dataset.value) === value);
+        if (option) {
+            option.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
     }
     
+    let scrollTimeout;
+    
     hourWheel.addEventListener('scroll', () => {
-        if (isProgrammaticScroll) return;
-        const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
-        let closest = null, minDist = Infinity;
-        hourWheel.querySelectorAll('.spinner-option').forEach(opt => {
-            const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = opt;
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
+            let closest = null;
+            let minDist = Infinity;
+            
+            Array.from(hourWheel.children).forEach(opt => {
+                const rect = opt.getBoundingClientRect();
+                const wheelRect = hourWheel.getBoundingClientRect();
+                const optCenter = rect.top + rect.height / 2;
+                const wheelCenter = wheelRect.top + wheelRect.height / 2;
+                const dist = Math.abs(optCenter - wheelCenter);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = opt;
+                }
+            });
+            
+            if (closest) {
+                const newHour = parseInt(closest.dataset.value);
+                if (newHour !== currentHour) {
+                    currentHour = newHour;
+                    updateHighlights();
+                    updateDetailed();
+                    updateHourly();
+                }
             }
-        });
-        if (closest) {
-            currentHour = parseInt(closest.dataset.value);
-            updateHighlights();
-            updateDetailed();
-            updateHourly();
-        }
+        }, 30);
     });
     
     minuteWheel.addEventListener('scroll', () => {
-        if (isProgrammaticScroll) return;
-        const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
-        let closest = null, minDist = Infinity;
-        minuteWheel.querySelectorAll('.spinner-option').forEach(opt => {
-            const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = opt;
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
+            let closest = null;
+            let minDist = Infinity;
+            
+            Array.from(minuteWheel.children).forEach(opt => {
+                const rect = opt.getBoundingClientRect();
+                const wheelRect = minuteWheel.getBoundingClientRect();
+                const optCenter = rect.top + rect.height / 2;
+                const wheelCenter = wheelRect.top + wheelRect.height / 2;
+                const dist = Math.abs(optCenter - wheelCenter);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = opt;
+                }
+            });
+            
+            if (closest) {
+                const newMinute = parseInt(closest.dataset.value);
+                if (newMinute !== currentMinute) {
+                    currentMinute = newMinute;
+                    updateHighlights();
+                    updateDetailed();
+                    updateHourly();
+                }
             }
-        });
-        if (closest) {
-            currentMinute = parseInt(closest.dataset.value);
-            updateHighlights();
-            updateDetailed();
-            updateHourly();
-        }
+        }, 30);
     });
     
     updateHighlights();
@@ -403,17 +467,51 @@ function updateDetailed() {
         if (tideHour >= selectedHour && !nextTide) nextTide = tide;
     });
     
+    // Get tide direction (flooding/ebbing)
+    const tideDirection = getTideDirection(tides.events, selectedHour);
+    
+    // Calculate risk with gradient blending
     let riskScore = (hourData.windSpeed / 12) * 0.4 + (hourData.swellHeight / 4) * 0.4 + (1 - (hourData.visibility / 20)) * 0.2;
     riskScore = Math.min(1, Math.max(0, riskScore));
     
-    let riskLevel = "Low", riskPercent = 12.5;
-    if (riskScore > 0.75) { riskLevel = "High"; riskPercent = 87.5; }
-    else if (riskScore > 0.5) { riskLevel = "Caution"; riskPercent = 62.5; }
-    else if (riskScore > 0.25) { riskLevel = "Moderate"; riskPercent = 37.5; }
+    let riskLevel = "Low";
+    let riskPercent = 12.5;
+    if (riskScore > 0.75) { 
+        riskLevel = "High"; 
+        riskPercent = 87.5; 
+        currentRiskPercent = 87.5;
+    } else if (riskScore > 0.5) { 
+        riskLevel = "Caution"; 
+        riskPercent = 62.5; 
+        currentRiskPercent = 62.5;
+    } else if (riskScore > 0.25) { 
+        riskLevel = "Moderate"; 
+        riskPercent = 37.5; 
+        currentRiskPercent = 37.5;
+    } else {
+        currentRiskPercent = 12.5;
+    }
     
     currentRisk = riskLevel;
+    
+    // Update gradient risk bar
+    const riskBar = document.querySelector('.risk-bar-gradient');
+    if (riskBar) {
+        riskBar.style.background = `linear-gradient(90deg, 
+            #1f8a4c 0%, 
+            #1f8a4c ${riskPercent - 12.5}%, 
+            #e0b01a ${riskPercent - 6}%, 
+            #e67e22 ${riskPercent + 6}%, 
+            #c0392b ${riskPercent + 25}%)`;
+    }
+    
     const riskPointer = document.getElementById('riskPointer');
     if (riskPointer) riskPointer.style.marginLeft = riskPercent + '%';
+    
+    let riskColor = '#88ff88';
+    if (riskLevel === 'High') riskColor = '#ff8888';
+    else if (riskLevel === 'Caution') riskColor = '#ffaa66';
+    else if (riskLevel === 'Moderate') riskColor = '#ffff88';
     
     let html = `
         <div class="detail-row"><strong>Wind:</strong> ${hourData.windSpeed} Bft ${degreesToDirection(hourData.windDir)} (Gusts ${hourData.gusts} Bft)</div>
@@ -423,15 +521,20 @@ function updateDetailed() {
         <div class="detail-row"><strong>Air Temp:</strong> ${hourData.airTemp.toFixed(1)}°C</div>
         <div class="detail-row"><strong>UV Index:</strong> ${hourData.uvIndex}</div>
         <div class="detail-row"><strong>Swell:</strong> ${hourData.swellHeight.toFixed(1)}m from ${degreesToDirection(hourData.swellDir)}</div>
-        <div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskLevel === 'High' ? '#ff8888' : riskLevel === 'Caution' ? '#ffaa66' : riskLevel === 'Moderate' ? '#ffff88' : '#88ff88'}">${riskLevel}</span></div>
+        <div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel}</span></div>
     `;
     
     if (prevTide || nextTide) {
-        html += `<div class="detail-row" style="margin-top:10px;"><strong>Tides near ${getSelectedTime()}:</strong></div>`;
-        if (prevTide) html += `<div class="detail-row">← ${prevTide.type} at ${prevTide.time} (${prevTide.height.toFixed(2)}m)</div>`;
-        if (nextTide) html += `<div class="detail-row">→ ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m)</div>`;
-        html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected' : '🌙 Neap tides expected'}</div>`;
-        html += `<div class="detail-row">${tides.moonPhase}</div>`;
+        html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
+        if (prevTide) {
+            html += `<div class="detail-row">← Previous ${prevTide.type} at ${prevTide.time} (${prevTide.height.toFixed(2)}m)</div>`;
+        }
+        if (nextTide) {
+            html += `<div class="detail-row">→ Next ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m)</div>`;
+        }
+        html += `<div class="detail-row"><strong>🌊 Tide Direction:</strong> ${tideDirection}</div>`;
+        html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)'}</div>`;
+        html += `<div class="detail-row">🌙 ${tides.moonPhase}</div>`;
     }
     
     const panel = document.getElementById('detailedPanel');
