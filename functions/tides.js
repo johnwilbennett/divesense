@@ -1,7 +1,7 @@
 export async function onRequest(context) {
   const { request, env } = context;
   
-  // Handle CORS preflight
+  // Handle CORS
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -56,7 +56,6 @@ export async function onRequest(context) {
     const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&station=${station}&key=${WT_API_KEY}`;
     
     console.log(`Fetching tides for ${station} on ${date}`);
-    console.log(`API URL: ${apiUrl.replace(WT_API_KEY, 'HIDDEN_KEY')}`);
     
     const response = await fetch(apiUrl);
     
@@ -66,30 +65,12 @@ export async function onRequest(context) {
     
     const data = await response.json();
     
-    // Check if the response contains an error
-    if (data.error) {
-      console.error('WorldTides API error:', data.error);
-      return new Response(JSON.stringify({ 
-        error: data.error,
-        message: 'WorldTides API returned an error'
-      }), {
-        status: 400,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache'
-        }
-      });
-    }
-    
-    // Return successful response with 6-hour cache
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=21600',
-        'CDN-Cache-Control': 'public, max-age=21600'
+        'Cache-Control': 'public, max-age=21600'
       }
     });
     
