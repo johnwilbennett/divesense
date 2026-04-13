@@ -141,6 +141,7 @@ function loadSavedPlans() {
 
 // REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
 // REAL WORLD TIDES API - Updated to parse correct WorldTides format
+a// REAL WORLD TIDES API - Filter to selected date only
 async function fetchRealTideData(station, date) {
   const cacheKey = `${station.worldtidesId}_${formatDateForAPI(date)}`;
   const now = Date.now();
@@ -170,40 +171,45 @@ async function fetchRealTideData(station, date) {
     const data = await response.json();
     console.log("Tide API response received", data);
     
-    // Check if API returned an error
     if (data.error) {
       console.warn("API error:", data.error);
       return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
-    // Parse WorldTides response - the data is in 'extremes' array
     if (!data.extremes || data.extremes.length === 0) {
       console.warn("No tide data available");
       return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
-    // Process WorldTides response - convert Unix timestamps to readable times
+    // Get the selected date in UTC (start of day)
+    const selectedDateStart = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0));
+    const selectedDateEnd = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59));
+    
+    // Filter tides to ONLY the selected date
     let tideEvents = [];
     for (let i = 0; i < data.extremes.length; i++) {
       const extreme = data.extremes[i];
-      // Convert Unix timestamp to date and extract time
       const tideDate = new Date(extreme.dt * 1000);
-      const hours = tideDate.getUTCHours();
-      const minutes = tideDate.getUTCMinutes();
-      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       
-      tideEvents.push({
-        type: extreme.type === "High" ? "High" : "Low",
-        time: timeStr,
-        height: extreme.height,
-        timestamp: extreme.dt * 1000
-      });
+      // Only include tides that fall on the selected date
+      if (tideDate >= selectedDateStart && tideDate <= selectedDateEnd) {
+        const hours = tideDate.getUTCHours();
+        const minutes = tideDate.getUTCMinutes();
+        const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        
+        tideEvents.push({
+          type: extreme.type === "High" ? "High" : "Low",
+          time: timeStr,
+          height: extreme.height,
+          timestamp: extreme.dt * 1000
+        });
+      }
     }
     
     // Sort by time
     tideEvents.sort((a, b) => a.timestamp - b.timestamp);
     
-    // Determine Spring or Neap tides based on tidal range
+    // Determine Spring or Neap tides
     function getTideType(events) {
       if (!events || events.length < 4) return "Unknown";
       let totalRange = 0;
@@ -229,7 +235,7 @@ async function fetchRealTideData(station, date) {
       timestamp: now
     });
     
-    console.log("Tide data cached for", cacheKey, `(${tideEvents.length} events)`);
+    console.log("Tide data cached for", cacheKey, `(${tideEvents.length} events for selected date)`);
     return tideData;
     
   } catch (error) {

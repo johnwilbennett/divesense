@@ -1,4 +1,4 @@
-// _worker.js - Debug version
+// _worker.js - No date restrictions
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -13,17 +13,18 @@ export default {
       dingle: { lat: 52.1333, lon: -10.2667 }
     };
     
-    if (url.pathname === '/api/test') {
-      return new Response(JSON.stringify({ message: 'Worker is working!' }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
     if (url.pathname === '/api/tides') {
       try {
         const stationName = url.searchParams.get('station');
-        const date = url.searchParams.get('date');
+        let date = url.searchParams.get('date');
         const WT_API_KEY = env.WORLDTIDES_API_KEY;
+        
+        if (!WT_API_KEY) {
+          return new Response(JSON.stringify({ error: 'API key not configured' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
         
         const coords = stationCoords[stationName.toLowerCase()];
         if (!coords) {
@@ -33,33 +34,18 @@ export default {
           });
         }
         
-        // Try different API versions
-        const apiUrlV3 = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
-        const apiUrlV2 = `https://www.worldtides.info/api?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
+        // WorldTides API can handle dates up to 10+ days ahead
+        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
         
-        // Try v3 first
-        let response = await fetch(apiUrlV3);
-        let data = await response.json();
+        const response = await fetch(apiUrl);
+        const data = await response.json();
         
-        // If v3 fails, try v2
-        if (data.error || data.status === 400) {
-          response = await fetch(apiUrlV2);
-          data = await response.json();
-        }
-        
-        // Return the full response for debugging
-        return new Response(JSON.stringify({
-          station: stationName,
-          coords: coords,
-          date: date,
-          apiResponse: data,
-          urlsTried: {
-            v3: apiUrlV3.replace(WT_API_KEY, 'HIDDEN'),
-            v2: apiUrlV2.replace(WT_API_KEY, 'HIDDEN')
-          }
-        }), {
+        return new Response(JSON.stringify(data), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=21600'
+          }
         });
         
       } catch (error) {
