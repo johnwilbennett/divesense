@@ -216,43 +216,7 @@ function initTimeSpinners() {
             e.preventDefault();
         });
     }
-    
-    // Hour wheel scroll handler - only updates on scroll end
-    let hourScrollTimeout;
-    hourWheel.addEventListener('scroll', function() {
-        // Prevent the wheel from being moved by dragging - keep it anchored
-        if (hourScrollTimeout) clearTimeout(hourScrollTimeout);
-        hourScrollTimeout = setTimeout(() => {
-            const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
-            const options = document.querySelectorAll('#hourWheel .spinner-option');
-            let closest = null;
-            let minDist = Infinity;
-            for (let i = 0; i < options.length; i++) {
-                const opt = options[i];
-                const rect = opt.getBoundingClientRect();
-                const wheelRect = hourWheel.getBoundingClientRect();
-                const optCenter = rect.top + rect.height / 2;
-                const wheelCenter = wheelRect.top + wheelRect.height / 2;
-                const dist = Math.abs(optCenter - wheelCenter);
-                if (dist < minDist) {
-                    minDist = dist;
-                    closest = opt;
-                }
-            }
-            if (closest) {
-                const newHour = parseInt(closest.dataset.value);
-                if (newHour !== currentHour) {
-                    currentHour = newHour;
-                    updateHighlightOnly();
-                    updateDetailed();
-                    updateHourly();
-                }
-                // Snap to the closest value
-                closest.scrollIntoView({ block: 'center', behavior: 'auto' });
-            }
-        }, 50);
-    });
-    
+
     // Minute wheel scroll handler
     let minuteScrollTimeout;
     minuteWheel.addEventListener('scroll', function() {
