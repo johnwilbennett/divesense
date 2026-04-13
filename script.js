@@ -140,19 +140,18 @@ function loadSavedPlans() {
 }
 
 // REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
-// REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
+// REAL WORLD TIDES API - Updated to parse correct WorldTides format
 async function fetchRealTideData(station, date) {
   const cacheKey = `${station.worldtidesId}_${formatDateForAPI(date)}`;
   const now = Date.now();
   
-  // Check cache first (6-hour expiry = 21600000 ms)
+  // Check cache first (6-hour expiry)
   if (tideCache.has(cacheKey)) {
     const cached = tideCache.get(cacheKey);
     if (now - cached.timestamp < 21600000) {
       console.log("Returning cached tide data for", cacheKey);
       return cached.data;
     } else {
-      console.log("Cache expired for", cacheKey);
       tideCache.delete(cacheKey);
     }
   }
@@ -164,45 +163,41 @@ async function fetchRealTideData(station, date) {
     console.log("Fetching tide data from:", apiUrl);
     const response = await fetch(apiUrl);
     
-    console.log("Response status:", response.status);
-    console.log("Content-Type:", response.headers.get('content-type'));
-    
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response received:", text.substring(0, 200));
-      throw new Error(`Expected JSON but received ${contentType || 'unknown content type'}`);
-    }
-    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}`);
     }
     
     const data = await response.json();
     console.log("Tide API response received", data);
     
-    // Check if API returned an error or no data
+    // Check if API returned an error
     if (data.error) {
       console.warn("API error:", data.error);
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: data.error };
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
+    // Parse WorldTides response - the data is in 'extremes' array
     if (!data.extremes || data.extremes.length === 0) {
-      console.warn("No tide data available for this station/date");
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide data available" };
+      console.warn("No tide data available");
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
-    // Process WorldTides response
+    // Process WorldTides response - convert Unix timestamps to readable times
     let tideEvents = [];
-    if (data.extremes && Array.isArray(data.extremes)) {
-      tideEvents = data.extremes.map(extreme => ({
+    for (let i = 0; i < data.extremes.length; i++) {
+      const extreme = data.extremes[i];
+      // Convert Unix timestamp to date and extract time
+      const tideDate = new Date(extreme.dt * 1000);
+      const hours = tideDate.getUTCHours();
+      const minutes = tideDate.getUTCMinutes();
+      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      
+      tideEvents.push({
         type: extreme.type === "High" ? "High" : "Low",
-        time: extreme.dt.substring(11, 16),
+        time: timeStr,
         height: extreme.height,
-        timestamp: new Date(extreme.dt).getTime()
-      }));
+        timestamp: extreme.dt * 1000
+      });
     }
     
     // Sort by time
@@ -228,7 +223,7 @@ async function fetchRealTideData(station, date) {
       rawData: data
     };
     
-    // Cache the data with timestamp
+    // Cache the data
     tideCache.set(cacheKey, {
       data: tideData,
       timestamp: now
@@ -239,7 +234,6 @@ async function fetchRealTideData(station, date) {
     
   } catch (error) {
     console.error("Error fetching tide data:", error);
-    // Return empty tide data on API failure with error message
     return { 
       events: [], 
       moonPhase: getMoonPhase(date), 
