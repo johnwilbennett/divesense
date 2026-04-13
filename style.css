@@ -68,7 +68,7 @@ header {
   border-left: 3px solid #2FFFEF;
 }
 
-/* Station Scroll - No scrollbar */
+/* Station Scroll - Wider cards */
 .station-scroll {
   display: flex;
   overflow-x: auto;
@@ -86,32 +86,76 @@ header {
 .station-card {
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
   border-radius: 40px;
-  padding: 10px 20px;
-  min-width: 100px;
+  padding: 12px 24px;
+  min-width: 130px;
   text-align: center;
   cursor: pointer;
   border: 1px solid #1AA7A7;
   transition: all 0.3s ease;
   font-size: 14px;
   font-weight: 600;
+  position: relative;
+  overflow: hidden;
 }
 
 .station-card small {
   font-size: 10px;
   color: #1AA7A7;
   display: block;
+  margin-top: 2px;
 }
 
 .station-card.active {
   border: 2px solid #2FFFEF;
-  background: linear-gradient(135deg, rgba(47, 255, 238, 0.15) 0%, rgba(0, 170, 255, 0.2) 100%);
-  box-shadow: 0 0 25px rgba(47, 255, 238, 0.4);
+  background: linear-gradient(135deg, #2FFFEF 0%, #00AAFF 100%);
+  color: #020B24;
+  box-shadow: 0 0 25px rgba(47, 255, 238, 0.6);
   transform: scale(1.02);
 }
 
 .station-card.active small {
-  color: #2FFFEF;
-  text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
+  color: #020B24;
+  text-shadow: none;
+}
+
+/* Dive Type - Centered */
+.dive-type-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.radio-group {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
+  border-radius: 40px;
+  border: 1px solid #1AA7A7;
+  transition: all 0.3s ease;
+}
+
+.radio-group label:hover {
+  border-color: #2FFFEF;
+  transform: translateY(-2px);
+}
+
+.radio-group input[type="radio"] {
+  accent-color: #2FFFEF;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 /* Calendar */
@@ -235,57 +279,6 @@ header {
   letter-spacing: 1px;
 }
 
-.radio-group, .checkbox-group {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin: 10px 0;
-}
-
-.radio-group label, .checkbox-group label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-input[type="radio"], input[type="checkbox"] {
-  accent-color: #2FFFEF;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.form-input {
-  width: 100%;
-  background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border: 1px solid #1AA7A7;
-  border-radius: 12px;
-  padding: 12px;
-  color: #2FFFEF;
-  font-size: 14px;
-  margin-bottom: 10px;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #2FFFEF;
-  box-shadow: 0 0 10px rgba(47, 255, 238, 0.2);
-}
-
-.row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  width: 100%;
-}
-
-.row > * {
-  flex: 1;
-  margin-bottom: 0;
-}
-
 /* Time Picker */
 .time-picker-wrapper {
   display: flex;
@@ -353,7 +346,7 @@ input[type="radio"], input[type="checkbox"] {
   border-radius: 8px;
 }
 
-/* Hourly Scroll - No scrollbar */
+/* Hourly Scroll */
 .hourly-scroll {
   display: flex;
   overflow-x: auto;
@@ -362,6 +355,7 @@ input[type="radio"], input[type="checkbox"] {
   width: 100%;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  scroll-snap-type: x mandatory;
 }
 
 .hourly-scroll::-webkit-scrollbar {
@@ -375,6 +369,7 @@ input[type="radio"], input[type="checkbox"] {
   padding: 12px;
   border: 1px solid #1AA7A7;
   transition: all 0.3s;
+  scroll-snap-align: start;
 }
 
 .hourly-card:hover {
@@ -385,15 +380,20 @@ input[type="radio"], input[type="checkbox"] {
 
 .hourly-card.highlight {
   border: 2px solid #2FFFEF;
-  background: rgba(47, 255, 238, 0.1);
-  box-shadow: 0 0 20px rgba(47, 255, 238, 0.3);
+  background: linear-gradient(135deg, #2FFFEF 0%, #00AAFF 100%);
+  color: #020B24;
+  box-shadow: 0 0 25px rgba(47, 255, 238, 0.5);
   transform: scale(1.02);
 }
 
 .hourly-card.highlight strong {
-  color: #2FFFEF;
-  text-shadow: 0 0 8px rgba(47, 255, 238, 0.5);
+  color: #020B24;
+  text-shadow: none;
   font-size: 18px;
+}
+
+.hourly-card.highlight div {
+  color: #020B24;
 }
 
 /* Tide Events */
@@ -426,35 +426,47 @@ input[type="radio"], input[type="checkbox"] {
   font-weight: 600;
 }
 
-/* Risk Bar */
-.risk-bar {
-  display: flex;
+/* Gradient Risk Bar */
+.risk-bar-gradient {
   margin: 20px 0 8px;
   border-radius: 30px;
   overflow: hidden;
   width: 100%;
+  height: 40px;
+  background: linear-gradient(90deg, #1f8a4c 0%, #e0b01a 30%, #e67e22 60%, #c0392b 100%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+  transition: all 0.3s ease;
 }
 
-.risk-segment {
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  font-size: 11px;
-  font-weight: 700;
+.risk-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding: 0 5px;
 }
 
-.risk-segment.green { background: #1f8a4c; }
-.risk-segment.yellow { background: #e0b01a; color: #1a1a1a; }
-.risk-segment.orange { background: #e67e22; }
-.risk-segment.red { background: #c0392b; }
+.risk-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #1AA7A7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-label.green-label { color: #6bff6b; }
+.risk-label.yellow-label { color: #ffff88; }
+.risk-label.orange-label { color: #ffaa66; }
+.risk-label.red-label { color: #ff8888; }
 
 .risk-pointer {
   text-align: center;
   font-size: 11px;
   color: #2FFFEF;
   margin-top: 6px;
-  transition: margin-left 0.3s;
+  transition: margin-left 0.3s ease;
   font-weight: bold;
+  text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
 }
 
 /* Chips */
@@ -487,6 +499,58 @@ input[type="radio"], input[type="checkbox"] {
   font-weight: 700;
   box-shadow: 0 0 15px rgba(47, 255, 238, 0.4);
   transform: scale(1.05);
+}
+
+/* Input Fields */
+.form-input {
+  width: 100%;
+  background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
+  border: 1px solid #1AA7A7;
+  border-radius: 12px;
+  padding: 12px;
+  color: #2FFFEF;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2FFFEF;
+  box-shadow: 0 0 10px rgba(47, 255, 238, 0.2);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.row > * {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+input[type="checkbox"] {
+  accent-color: #2FFFEF;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 /* Buttons */
@@ -532,70 +596,3 @@ input[type="radio"], input[type="checkbox"] {
 .text-small { font-size: 10px; color: #00FFAA; }
 .mt-2 { margin-top: 10px; }
 .mb-2 { margin-bottom: 10px; }
-
-/* Station Card - Fix rounded glow */
-.station-card {
-  background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border-radius: 40px;
-  padding: 10px 20px;
-  min-width: 100px;
-  text-align: center;
-  cursor: pointer;
-  border: 1px solid #1AA7A7;
-  transition: all 0.3s ease;
-  font-size: 14px;
-  font-weight: 600;
-  position: relative;
-  overflow: hidden;
-}
-
-.station-card.active {
-  border: 2px solid #2FFFEF;
-  background: linear-gradient(135deg, rgba(47, 255, 238, 0.15) 0%, rgba(0, 170, 255, 0.2) 100%);
-  box-shadow: 0 0 20px rgba(47, 255, 238, 0.4), inset 0 0 10px rgba(47, 255, 238, 0.1);
-  transform: scale(1.02);
-}
-
-/* Gradient Risk Bar */
-.risk-bar-gradient {
-  display: flex;
-  margin: 20px 0 8px;
-  border-radius: 30px;
-  overflow: hidden;
-  width: 100%;
-  height: 40px;
-  background: linear-gradient(90deg, #1f8a4c 0%, #e0b01a 30%, #e67e22 60%, #c0392b 100%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  position: relative;
-  transition: background 0.3s ease;
-}
-
-.risk-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  padding: 0 5px;
-}
-
-.risk-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #1AA7A7;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.risk-label.green-label { color: #6bff6b; }
-.risk-label.yellow-label { color: #ffff88; }
-.risk-label.orange-label { color: #ffaa66; }
-.risk-label.red-label { color: #ff8888; }
-
-.risk-pointer {
-  text-align: center;
-  font-size: 11px;
-  color: #2FFFEF;
-  margin-top: 6px;
-  transition: margin-left 0.3s ease;
-  font-weight: bold;
-  text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
-}

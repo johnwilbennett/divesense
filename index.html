@@ -28,9 +28,11 @@
       
       <div class="form-group">
         <label class="form-label">Dive Type</label>
-        <div class="radio-group">
-          <label><input type="radio" name="diveType" value="Boat" checked> Boat Dive</label>
-          <label><input type="radio" name="diveType" value="Shore"> Shore Dive</label>
+        <div class="dive-type-container">
+          <div class="radio-group">
+            <label><input type="radio" name="diveType" value="Boat" checked> Boat Dive</label>
+            <label><input type="radio" name="diveType" value="Shore"> Shore Dive</label>
+          </div>
         </div>
       </div>
       
@@ -69,11 +71,13 @@
       <div class="card-title">Detailed Conditions</div>
       <div id="detailedPanel">Loading conditions...</div>
       
-      <div class="risk-bar">
-        <div class="risk-segment green">Low</div>
-        <div class="risk-segment yellow">Moderate</div>
-        <div class="risk-segment orange">Caution</div>
-        <div class="risk-segment red">High</div>
+      <!-- Gradient Risk Bar -->
+      <div class="risk-bar-gradient" id="riskBarGradient"></div>
+      <div class="risk-labels">
+        <span class="risk-label green-label">LOW</span>
+        <span class="risk-label yellow-label">MODERATE</span>
+        <span class="risk-label orange-label">CAUTION</span>
+        <span class="risk-label red-label">HIGH</span>
       </div>
       <div id="riskPointer" class="risk-pointer">▲ Risk Level</div>
     </section>
@@ -89,7 +93,7 @@
         <input type="text" id="dodAsst" placeholder="Assistant (optional)" class="form-input">
       </div>
       
-      <div class="radio-group">
+      <div class="radio-group participation-group">
         <label><input type="radio" name="participation" value="Open to All" checked> Open to All</label>
         <label><input type="radio" name="participation" value="Restricted to D2+"> Restricted to D2+</label>
       </div>
@@ -98,7 +102,7 @@
       
       <div id="coxField">
         <input type="text" id="coxName" placeholder="Cox'n Name(s)" class="form-input">
-        <div class="radio-group">
+        <div class="radio-group cox-group">
           <label><input type="radio" name="coxMode" value="Dedicated"> Dedicated Cox'n</label>
           <label><input type="radio" name="coxMode" value="Split"> Split Cox'n</label>
         </div>
@@ -127,7 +131,7 @@
 
     <!-- Advisory -->
     <div class="advisory">
-      Always cross-check weather, swell, and tide information with official sources. Conditions can change rapidly. This tool is for planning support only and does not replace local knowledge, skipper judgement, or official forecasts.
+      ⚠️ IMPORTANT: Always cross-check weather, swell, and tide information with official sources. Conditions can change rapidly. This tool is for planning support only and does not replace local knowledge, Cox'n judgement, or official forecasts.
     </div>
   </div>
 

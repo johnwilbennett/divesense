@@ -17,6 +17,7 @@ let currentHour = new Date().getHours();
 let currentMinute = new Date().getMinutes();
 let currentRiskPercent = 37.5;
 let currentCalendarMonth = new Date();
+let isSlackWater = false;
 
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
@@ -70,28 +71,41 @@ function updateTimeLabel() {
     }
 }
 
+// Check if a given time is within 40 minutes of a tide
+function isSlackWaterTime(tideEvents, hour, minute) {
+    const totalMinutes = hour * 60 + minute;
+    for (let i = 0; i < tideEvents.length; i++) {
+        const tideParts = tideEvents[i].time.split(':');
+        const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+        const diff = Math.abs(totalMinutes - tideMinutes);
+        if (diff <= 40) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Determine if tide is flooding or ebbing
-function getTideDirection(tideEvents, targetHour) {
+function getTideDirection(tideEvents, targetHour, targetMinute) {
     if (!tideEvents || tideEvents.length < 2) return "Unknown";
     
-    // Find the tide before and after the target time
+    const targetMinutes = targetHour * 60 + targetMinute;
     let prevTide = null;
     let nextTide = null;
     
     for (let i = 0; i < tideEvents.length; i++) {
-        const tideHour = parseInt(tideEvents[i].time);
-        if (tideHour <= targetHour) {
+        const tideParts = tideEvents[i].time.split(':');
+        const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+        if (tideMinutes <= targetMinutes) {
             prevTide = tideEvents[i];
         }
-        if (tideHour >= targetHour && !nextTide) {
+        if (tideMinutes >= targetMinutes && !nextTide) {
             nextTide = tideEvents[i];
         }
     }
     
     if (!prevTide || !nextTide) return "Unknown";
     
-    // If prev tide is High and next is Low, water is ebbing (going out)
-    // If prev tide is Low and next is High, water is flooding (coming in)
     if (prevTide.type === "High" && nextTide.type === "Low") {
         return "Ebbing (Outgoing) 🌊⬇️";
     } else if (prevTide.type === "Low" && nextTide.type === "High") {
@@ -150,6 +164,17 @@ function getMockWeatherData(station, date) {
         });
     }
     return hourly;
+}
+
+// Auto-scroll to selected hour card
+function scrollToSelectedHour() {
+    const container = document.getElementById('hourlyScroll');
+    if (!container) return;
+    
+    const selectedCard = container.querySelector('.hourly-card.highlight');
+    if (selectedCard) {
+        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
 }
 
 // CALENDAR
@@ -261,13 +286,12 @@ function initStations() {
     });
 }
 
-// TIME SPINNERS - FIXED
+// TIME SPINNERS
 function initTimeSpinners() {
     const hourWheel = document.getElementById('hourWheel');
     const minuteWheel = document.getElementById('minuteWheel');
     if (!hourWheel || !minuteWheel) return;
     
-    // Clear and rebuild
     hourWheel.innerHTML = '';
     minuteWheel.innerHTML = '';
     
@@ -340,6 +364,7 @@ function initTimeSpinners() {
                     updateHighlights();
                     updateDetailed();
                     updateHourly();
+                    scrollToSelectedHour();
                 }
             }
         }, 30);
@@ -371,6 +396,7 @@ function initTimeSpinners() {
                     updateHighlights();
                     updateDetailed();
                     updateHourly();
+                    scrollToSelectedHour();
                 }
             }
         }, 30);
@@ -447,16 +473,20 @@ function updateHourly() {
             <div>💨 ${hour.windSpeed} Bft</div>
             <div>${degreesToDirection(hour.windDir)}</div>
             <div>🌊 ${hour.swellHeight.toFixed(1)}m</div>
-            ${isSlack ? '<div style="color:#44ff44; font-size:10px;">⚡ Slack Water</div>' : ''}
+            ${isSlack ? '<div style="color:#020B24; font-size:10px; font-weight:bold;">⚡ Slack Water</div>' : ''}
         </div>`;
     });
     container.innerHTML = html;
+    
+    // Auto-scroll to selected hour
+    setTimeout(() => scrollToSelectedHour(), 100);
 }
 
 function updateDetailed() {
     const weather = getMockWeatherData(currentStation, currentDate);
     const tides = getMockTideData(currentStation, currentDate);
     const selectedHour = currentHour;
+    const selectedMinute = currentMinute;
     
     let hourData = weather.find(w => parseInt(w.time) === selectedHour) || weather[12];
     
@@ -467,8 +497,11 @@ function updateDetailed() {
         if (tideHour >= selectedHour && !nextTide) nextTide = tide;
     });
     
-    // Get tide direction (flooding/ebbing)
-    const tideDirection = getTideDirection(tides.events, selectedHour);
+    // Check for slack water at exact selected time
+    isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
+    
+    // Get tide direction
+    const tideDirection = getTideDirection(tides.events, selectedHour, selectedMinute);
     
     // Calculate risk with gradient blending
     let riskScore = (hourData.windSpeed / 12) * 0.4 + (hourData.swellHeight / 4) * 0.4 + (1 - (hourData.visibility / 20)) * 0.2;
@@ -495,14 +528,14 @@ function updateDetailed() {
     currentRisk = riskLevel;
     
     // Update gradient risk bar
-    const riskBar = document.querySelector('.risk-bar-gradient');
+    const riskBar = document.getElementById('riskBarGradient');
     if (riskBar) {
         riskBar.style.background = `linear-gradient(90deg, 
             #1f8a4c 0%, 
-            #1f8a4c ${riskPercent - 12.5}%, 
-            #e0b01a ${riskPercent - 6}%, 
-            #e67e22 ${riskPercent + 6}%, 
-            #c0392b ${riskPercent + 25}%)`;
+            #1f8a4c ${Math.max(0, riskPercent - 15)}%, 
+            #e0b01a ${Math.max(0, riskPercent - 5)}%, 
+            #e67e22 ${Math.min(100, riskPercent + 5)}%, 
+            #c0392b ${Math.min(100, riskPercent + 20)}%)`;
     }
     
     const riskPointer = document.getElementById('riskPointer');
@@ -521,8 +554,14 @@ function updateDetailed() {
         <div class="detail-row"><strong>Air Temp:</strong> ${hourData.airTemp.toFixed(1)}°C</div>
         <div class="detail-row"><strong>UV Index:</strong> ${hourData.uvIndex}</div>
         <div class="detail-row"><strong>Swell:</strong> ${hourData.swellHeight.toFixed(1)}m from ${degreesToDirection(hourData.swellDir)}</div>
-        <div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel}</span></div>
     `;
+    
+    // Show slack water in detailed conditions if applicable
+    if (isSlackWater) {
+        html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.1); border-radius: 8px; margin-top: 5px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
+    }
+    
+    html += `<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel}</span></div>`;
     
     if (prevTide || nextTide) {
         html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
