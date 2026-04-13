@@ -716,3 +716,90 @@ if (document.readyState === 'loading') {
   init();
   createParticles();
 }
+// Calendar functionality
+let currentCalendarMonth = new Date();
+
+function buildCalendar() {
+    const container = document.getElementById('calendarContainer');
+    if (!container) return;
+    
+    const year = currentCalendarMonth.getFullYear();
+    const month = currentCalendarMonth.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const startDay = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get selected date (or default to today)
+    let selectedDate = currentDate;
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    // Calculate max date (today + 10 days)
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 10);
+    
+    // Calculate min date (today)
+    const minDate = today;
+    
+    // Month names
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    let html = `
+        <div class="calendar-header">
+            <div class="calendar-month-year">${monthNames[month]} ${year}</div>
+            <div class="calendar-nav">
+                <button class="calendar-nav-btn" data-prev-month>&lt;</button>
+                <button class="calendar-nav-btn" data-next-month>&gt;</button>
+            </div>
+        </div>
+        <div class="calendar-weekdays">
+            <div class="calendar-weekday">Su</div>
+            <div class="calendar-weekday">Mo</div>
+            <div class="calendar-weekday">Tu</div>
+            <div class="calendar-weekday">We</div>
+            <div class="calendar-weekday">Th</div>
+            <div class="calendar-weekday">Fr</div>
+            <div class="calendar-weekday">Sa</div>
+        </div>
+        <div class="calendar-days">
+    `;
+    
+    // Empty cells for days before month starts
+    for (let i = 0; i < startDay; i++) {
+        html += '<div class="calendar-day other-month"></div>';
+    }
+    
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const currentDateObj = new Date(year, month, day);
+        currentDateObj.setHours(0, 0, 0, 0);
+        
+        const isSelected = currentDateObj.getTime() === selectedDate.getTime();
+        const isToday = currentDateObj.getTime() === today.getTime();
+        const isDisabled = currentDateObj < minDate || currentDateObj > maxDate;
+        
+        let classes = 'calendar-day';
+        if (isSelected) classes += ' selected';
+        if (isToday) classes += ' today';
+        if (isDisabled) classes += ' disabled';
+        
+        html += `<div class="${classes}" data-date="${currentDateObj.toISOString()}">${day}</div>`;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+        // Add event listeners to calendar days
+        document.querySelectorAll('.calendar-day:not(.disabled):not(.other-month)').forEach(day => {
+            day.addEventListener('click', () => {
+                const date = new Date(day.dataset.date);
+                currentDate = date;
+                buildCalendar();
+                loadAllData();
+            });
+        });
+    }
