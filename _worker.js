@@ -1,4 +1,4 @@
-// _worker.js - Get UTC times from WorldTides
+// _worker.js - Using LAT (Lowest Astronomical Tide) datum
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -34,8 +34,9 @@ export default {
           });
         }
         
-        // Request data in UTC
-        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&timezone=UTC`;
+        // Use datum=LAT (Lowest Astronomical Tide) - the lowest predicted tide level
+        // This represents the worst-case scenario for depth planning
+        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&datum=LAT&timezone=UTC`;
         
         const response = await fetch(apiUrl);
         const data = await response.json();

@@ -882,8 +882,8 @@ async function updateTides() {
   
   // Add LAT explanation
   html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
-  html += '📐 Heights are relative to <strong>LAT (Lowest Astronomical Tide)</strong> - the lowest tide level predicted under average meteorological conditions.';
-  html += '<br>Negative values indicate tides below LAT.';
+  html += '📐 Heights are relative to <strong>LAT (Lowest Astronomical Tide)</strong> - the lowest predicted tide level over a full nodal cycle (~18.6 years).';
+  html += '<br>All heights are positive values above LAT. This represents the worst-case (shallowest) depth scenario for dive planning.';
   html += '</div>';
   html += '<div class="text-small mt-2">🌙 ' + tides.moonPhase + '</div>';
   
