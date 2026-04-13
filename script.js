@@ -34,6 +34,57 @@ function getWeatherIcon(cloudCover, rain) {
   return weatherIcons.clear;
 }
 
+// Check if Ireland is in Daylight Savings Time (GMT+1)
+function isDaylightSavingsTime(date) {
+  const year = date.getFullYear();
+  
+  // Last Sunday in March
+  const lastMarch = new Date(year, 2, 31);
+  const lastSundayMarch = new Date(lastMarch);
+  lastSundayMarch.setDate(lastMarch.getDate() - lastMarch.getDay());
+  lastSundayMarch.setHours(1, 0, 0, 0);
+  
+  // Last Sunday in October
+  const lastOctober = new Date(year, 9, 31);
+  const lastSundayOctober = new Date(lastOctober);
+  lastSundayOctober.setDate(lastOctober.getDate() - lastOctober.getDay());
+  lastSundayOctober.setHours(1, 0, 0, 0);
+  
+  return date >= lastSundayMarch && date < lastSundayOctober;
+}
+
+// Get current Irish timezone string
+function getIrishTimezone() {
+  const now = new Date();
+  if (isDaylightSavingsTime(now)) {
+    return "GMT+1 (IST)";
+  } else {
+    return "GMT (GMT)";
+  }
+}
+
+// Convert UTC tide time to Irish local time
+function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
+  const utcTimestamp = Date.UTC(
+    tideDateUTC.getUTCFullYear(),
+    tideDateUTC.getUTCMonth(),
+    tideDateUTC.getUTCDate(),
+    utcHour,
+    utcMinute,
+    0
+  );
+  
+  const localDate = new Date(utcTimestamp);
+  const localHour = localDate.getHours();
+  const localMinute = localDate.getMinutes();
+  
+  return {
+    hour: localHour,
+    minute: localMinute,
+    timeStr: localHour.toString().padStart(2, '0') + ":" + localMinute.toString().padStart(2, '0')
+  };
+}
+
 function degreesToDirection(deg) {
   const index = Math.round(deg / 22.5) % 16;
   return windDirections[index];
@@ -79,8 +130,9 @@ function updateTimeLabel() {
     }
   }
   const prefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
+  const timezone = getIrishTimezone();
   if (timeLabel) {
-    timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span>';
+    timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span> <span style="color: #1AA7A7; font-size: 10px;">(' + timezone + ')</span>';
   }
 }
 
@@ -140,6 +192,65 @@ function loadUserPreferences() {
   }
 }
 
+
+// Check if Ireland is in Daylight Savings Time (GMT+1)
+function isDaylightSavingsTime(date) {
+  // Ireland DST: Last Sunday in March (01:00 GMT) to Last Sunday in October (01:00 GMT)
+  const year = date.getFullYear();
+  
+  // Calculate last Sunday in March
+  const lastMarch = new Date(year, 2, 31);
+  const lastSundayMarch = new Date(lastMarch);
+  lastSundayMarch.setDate(lastMarch.getDate() - lastMarch.getDay());
+  lastSundayMarch.setHours(1, 0, 0, 0);
+  
+  // Calculate last Sunday in October
+  const lastOctober = new Date(year, 9, 31);
+  const lastSundayOctober = new Date(lastOctober);
+  lastSundayOctober.setDate(lastOctober.getDate() - lastOctober.getDay());
+  lastSundayOctober.setHours(1, 0, 0, 0);
+  
+  // DST is active between last Sunday March and last Sunday October
+  return date >= lastSundayMarch && date < lastSundayOctober;
+}
+
+// Get current Irish timezone string
+function getIrishTimezone() {
+  const now = new Date();
+  if (isDaylightSavingsTime(now)) {
+    return "GMT+1 (IST)";
+  } else {
+    return "GMT (GMT)";
+  }
+}
+
+// Convert UTC tide time to Irish local time
+function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
+  const date = new Date(tideDateUTC);
+  // Create a UTC timestamp
+  const utcTimestamp = Date.UTC(
+    date.getUTCFullYear(), 
+    date.getUTCMonth(), 
+    date.getUTCDate(), 
+    utcHour, 
+    utcMinute, 
+    0
+  );
+  
+  // Convert to local Irish time (browser will apply DST automatically)
+  const localDate = new Date(utcTimestamp);
+  const localHour = localDate.getHours();
+  const localMinute = localDate.getMinutes();
+  
+  return {
+    hour: localHour,
+    minute: localMinute,
+    timeStr: localHour.toString().padStart(2, '0') + ":" + localMinute.toString().padStart(2, '0')
+  };
+}
+
+
+
 let savedPlans = [];
 
 function loadSavedPlans() {
@@ -149,7 +260,6 @@ function loadSavedPlans() {
   }
   renderSavedPlans();
 }
-
 async function fetchRealTideData(station, date) {
   const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
@@ -189,16 +299,20 @@ async function fetchRealTideData(station, date) {
     let tideEvents = [];
     for (let i = 0; i < data.extremes.length; i++) {
       const extreme = data.extremes[i];
-      const tideDate = new Date(extreme.dt * 1000);
+      const tideDateUTC = new Date(extreme.dt * 1000);
       
-      if (tideDate >= selectedDateStart && tideDate <= selectedDateEnd) {
-        const hours = tideDate.getUTCHours();
-        const minutes = tideDate.getUTCMinutes();
-        const timeStr = hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0');
+      // Check if tide falls on selected date in UTC
+      if (tideDateUTC >= selectedDateStart && tideDateUTC <= selectedDateEnd) {
+        const utcHour = tideDateUTC.getUTCHours();
+        const utcMinute = tideDateUTC.getUTCMinutes();
+        
+        // Convert to Irish local time
+        const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
         
         tideEvents.push({
           type: extreme.type === "High" ? "High" : "Low",
-          time: timeStr,
+          time: localTime.timeStr,
+          utcTime: utcHour.toString().padStart(2, '0') + ":" + utcMinute.toString().padStart(2, '0'),
           height: extreme.height,
           timestamp: extreme.dt * 1000
         });
@@ -222,7 +336,8 @@ async function fetchRealTideData(station, date) {
     const tideData = {
       events: tideEvents,
       moonPhase: getMoonPhase(date),
-      tideType: getTideType(tideEvents)
+      tideType: getTideType(tideEvents),
+      timezone: getIrishTimezone()
     };
     
     tideCache.set(cacheKey, { data: tideData, timestamp: now });
@@ -755,6 +870,9 @@ async function updateTides() {
   if (tides.tideType !== 'Unknown') {
     html += '<div class="' + tideTypeClass + '" style="font-size:1.2rem; margin-bottom:10px;">' + tideTypeIcon + ' ' + tides.tideType.toUpperCase() + ' TIDES</div>';
   }
+  
+  // Show timezone info
+  html += '<div class="text-small mb-2" style="text-align:center;">⏰ Times shown in ' + tides.timezone + '</div>';
   
   for (let i = 0; i < tides.events.length; i++) {
     const e = tides.events[i];

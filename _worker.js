@@ -1,4 +1,4 @@
-// _worker.js - Updated with new coordinates
+// _worker.js - Get UTC times from WorldTides
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -34,7 +34,8 @@ export default {
           });
         }
         
-        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
+        // Request data in UTC
+        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&timezone=UTC`;
         
         const response = await fetch(apiUrl);
         const data = await response.json();
