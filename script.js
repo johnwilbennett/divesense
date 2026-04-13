@@ -260,6 +260,7 @@ function loadSavedPlans() {
   }
   renderSavedPlans();
 }
+
 async function fetchRealTideData(station, date) {
   const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
@@ -280,33 +281,45 @@ async function fetchRealTideData(station, date) {
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
-      throw new Error("HTTP " + response.status);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     
     const data = await response.json();
     
     if (data.error) {
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
+      console.warn("API error:", data.error);
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: data.error };
     }
     
     if (!data.extremes || data.extremes.length === 0) {
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
+      console.warn("No tide data available for this date");
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide predictions available for this date" };
     }
     
-    const selectedDateStart = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0));
-    const selectedDateEnd = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59));
+    // FIXED: Create UTC date boundaries correctly
+    // Get the year, month, day from the selected date
+    const selectedYear = date.getFullYear();
+    const selectedMonth = date.getMonth();
+    const selectedDay = date.getDate();
+    
+    // Create UTC start of day (00:00:00 UTC)
+    const selectedDateStart = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 0, 0, 0));
+    // Create UTC end of day (23:59:59 UTC)
+    const selectedDateEnd = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 23, 59, 59));
+    
+    console.log(`Filtering tides for date: ${selectedYear}-${selectedMonth+1}-${selectedDay}`);
+    console.log(`UTC range: ${selectedDateStart.toISOString()} to ${selectedDateEnd.toISOString()}`);
     
     let tideEvents = [];
     for (let i = 0; i < data.extremes.length; i++) {
       const extreme = data.extremes[i];
       const tideDateUTC = new Date(extreme.dt * 1000);
       
-      // Check if tide falls on selected date in UTC
+      // Check if tide falls on the selected date in UTC
       if (tideDateUTC >= selectedDateStart && tideDateUTC <= selectedDateEnd) {
         const utcHour = tideDateUTC.getUTCHours();
         const utcMinute = tideDateUTC.getUTCMinutes();
-        
-        // Convert to Irish local time
         const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
         
         tideEvents.push({
@@ -317,6 +330,12 @@ async function fetchRealTideData(station, date) {
           timestamp: extreme.dt * 1000
         });
       }
+    }
+    
+    console.log(`Kept ${tideEvents.length} of ${data.extremes.length} tides for this date`);
+    
+    if (tideEvents.length === 0) {
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide data for selected date" };
     }
     
     tideEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
@@ -345,7 +364,13 @@ async function fetchRealTideData(station, date) {
     
   } catch (error) {
     console.error("Error fetching tide data:", error);
-    return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
+    return { 
+      events: [], 
+      moonPhase: getMoonPhase(date), 
+      tideType: "Unknown", 
+      error: true, 
+      errorMessage: error.message 
+    };
   }
 }
 
