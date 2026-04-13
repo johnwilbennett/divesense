@@ -13,11 +13,12 @@ let currentStation = stations[1];
 let currentDate = new Date();
 let selectedChips = new Set();
 let currentRisk = "Moderate";
+let currentRiskPercent = 37.5;
 let currentHour = new Date().getHours();
 let currentMinute = new Date().getMinutes();
-let currentRiskPercent = 37.5;
 let currentCalendarMonth = new Date();
-let isSlackWater = false;
+let diveTypeSelected = false;
+let selectedDiveType = "Boat";
 
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
@@ -57,15 +58,7 @@ function getSelectedTime() {
 
 function updateTimeLabel() {
     const timeLabel = document.getElementById('timeLabel');
-    const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
-    let diveType = "Boat";
-    for (let i = 0; i < diveTypeRadios.length; i++) {
-        if (diveTypeRadios[i].checked) {
-            diveType = diveTypeRadios[i].value;
-            break;
-        }
-    }
-    const prefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
+    const prefix = selectedDiveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
     if (timeLabel) {
         timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span>';
     }
@@ -85,7 +78,44 @@ function isSlackWaterTime(tideEvents, hour, minute) {
     return false;
 }
 
-// Determine if tide is flooding or ebbing
+// Determine tide direction for a specific hour block
+function getTideDirectionForHour(tideEvents, hour) {
+    if (!tideEvents || tideEvents.length < 2) return "Unknown";
+    
+    const targetMinutes = hour * 60;
+    let prevTide = null;
+    let nextTide = null;
+    
+    for (let i = 0; i < tideEvents.length; i++) {
+        const tideParts = tideEvents[i].time.split(':');
+        const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+        if (tideMinutes <= targetMinutes) {
+            prevTide = tideEvents[i];
+        }
+        if (tideMinutes >= targetMinutes && !nextTide) {
+            nextTide = tideEvents[i];
+        }
+    }
+    
+    if (!prevTide || !nextTide) return "Unknown";
+    
+    // Check if within 40 minutes of a tide (slack water)
+    const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
+    const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+    
+    if (timeToPrev <= 40 || timeToNext <= 40) {
+        return "Slack Water ⚡";
+    }
+    
+    if (prevTide.type === "High" && nextTide.type === "Low") {
+        return "Ebbing 🌊⬇️";
+    } else if (prevTide.type === "Low" && nextTide.type === "High") {
+        return "Flooding 🌊⬆️";
+    }
+    return "Slack Water ⚡";
+}
+
+// Determine tide direction for detailed view (exact time)
 function getTideDirection(tideEvents, targetHour, targetMinute) {
     if (!tideEvents || tideEvents.length < 2) return "Unknown";
     
@@ -105,6 +135,13 @@ function getTideDirection(tideEvents, targetHour, targetMinute) {
     }
     
     if (!prevTide || !nextTide) return "Unknown";
+    
+    const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
+    const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+    
+    if (timeToPrev <= 40 || timeToNext <= 40) {
+        return "Slack Water ⚡";
+    }
     
     if (prevTide.type === "High" && nextTide.type === "Low") {
         return "Ebbing (Outgoing) 🌊⬇️";
@@ -164,17 +201,6 @@ function getMockWeatherData(station, date) {
         });
     }
     return hourly;
-}
-
-// Auto-scroll to selected hour card
-function scrollToSelectedHour() {
-    const container = document.getElementById('hourlyScroll');
-    if (!container) return;
-    
-    const selectedCard = container.querySelector('.hourly-card.highlight');
-    if (selectedCard) {
-        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-    }
 }
 
 // CALENDAR
@@ -362,9 +388,10 @@ function initTimeSpinners() {
                 if (newHour !== currentHour) {
                     currentHour = newHour;
                     updateHighlights();
-                    updateDetailed();
-                    updateHourly();
-                    scrollToSelectedHour();
+                    if (diveTypeSelected) {
+                        updateDetailed();
+                        updateHourly();
+                    }
                 }
             }
         }, 30);
@@ -394,9 +421,10 @@ function initTimeSpinners() {
                 if (newMinute !== currentMinute) {
                     currentMinute = newMinute;
                     updateHighlights();
-                    updateDetailed();
-                    updateHourly();
-                    scrollToSelectedHour();
+                    if (diveTypeSelected) {
+                        updateDetailed();
+                        updateHourly();
+                    }
                 }
             }
         }, 30);
@@ -409,16 +437,35 @@ function initTimeSpinners() {
     }, 100);
 }
 
-// DIVE TYPE
+// DIVE TYPE - Must select before spinner works
 function initDiveType() {
     const radios = document.querySelectorAll('input[name="diveType"]');
     const coxField = document.getElementById('coxField');
+    const hourWheel = document.getElementById('hourWheel');
+    const minuteWheel = document.getElementById('minuteWheel');
+    const timeLabel = document.getElementById('timeLabel');
+    
+    // Initially disable spinners until dive type is selected
+    if (hourWheel) hourWheel.style.opacity = '0.5';
+    if (minuteWheel) minuteWheel.style.opacity = '0.5';
+    if (timeLabel) timeLabel.style.opacity = '0.5';
     
     radios.forEach(radio => {
         radio.addEventListener('change', (e) => {
+            selectedDiveType = e.target.value;
+            diveTypeSelected = true;
+            
+            // Enable spinners
+            if (hourWheel) hourWheel.style.opacity = '1';
+            if (minuteWheel) minuteWheel.style.opacity = '1';
+            if (timeLabel) timeLabel.style.opacity = '1';
+            
             if (coxField) coxField.style.display = e.target.value === 'Boat' ? 'block' : 'none';
             document.getElementById('lifeJackets').checked = e.target.value === 'Boat';
             updateTimeLabel();
+            
+            // Load data now that dive type is selected
+            loadAllData();
         });
     });
     
@@ -445,6 +492,8 @@ function updateTides() {
 }
 
 function updateHourly() {
+    if (!diveTypeSelected) return;
+    
     const weather = getMockWeatherData(currentStation, currentDate);
     const tides = getMockTideData(currentStation, currentDate);
     const selectedHour = currentHour;
@@ -455,17 +504,16 @@ function updateHourly() {
     let html = '';
     weather.forEach(hour => {
         const hourNum = parseInt(hour.time);
-        let closestTide = tides.events[0];
-        let minDiff = Math.abs(parseInt(closestTide.time) - hourNum);
-        tides.events.forEach(tide => {
-            const diff = Math.abs(parseInt(tide.time) - hourNum);
-            if (diff < minDiff) {
-                minDiff = diff;
-                closestTide = tide;
-            }
-        });
         
-        const isSlack = Math.abs(hourNum - parseInt(closestTide.time)) <= 40;
+        // Get tide direction for this hour block
+        const tideDirection = getTideDirectionForHour(tides.events, hourNum);
+        
+        // Determine tide icon
+        let tideIcon = '';
+        if (tideDirection.includes('Flooding')) tideIcon = '⬆️';
+        else if (tideDirection.includes('Ebbing')) tideIcon = '⬇️';
+        else if (tideDirection.includes('Slack')) tideIcon = '⚡';
+        
         const highlightClass = hourNum === selectedHour ? 'highlight' : '';
         
         html += `<div class="hourly-card ${highlightClass}">
@@ -473,16 +521,21 @@ function updateHourly() {
             <div>💨 ${hour.windSpeed} Bft</div>
             <div>${degreesToDirection(hour.windDir)}</div>
             <div>🌊 ${hour.swellHeight.toFixed(1)}m</div>
-            ${isSlack ? '<div style="color:#020B24; font-size:10px; font-weight:bold;">⚡ Slack Water</div>' : ''}
+            <div style="font-size: 10px; margin-top: 4px;">${tideIcon} ${tideDirection}</div>
         </div>`;
     });
     container.innerHTML = html;
     
-    // Auto-scroll to selected hour
-    setTimeout(() => scrollToSelectedHour(), 100);
+    // Just update the highlight, no page jumping
+    const selectedCard = container.querySelector('.hourly-card.highlight');
+    if (selectedCard) {
+        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
 }
 
 function updateDetailed() {
+    if (!diveTypeSelected) return;
+    
     const weather = getMockWeatherData(currentStation, currentDate);
     const tides = getMockTideData(currentStation, currentDate);
     const selectedHour = currentHour;
@@ -498,7 +551,7 @@ function updateDetailed() {
     });
     
     // Check for slack water at exact selected time
-    isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
+    const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
     
     // Get tide direction
     const tideDirection = getTideDirection(tides.events, selectedHour, selectedMinute);
@@ -558,10 +611,10 @@ function updateDetailed() {
     
     // Show slack water in detailed conditions if applicable
     if (isSlackWater) {
-        html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.1); border-radius: 8px; margin-top: 5px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
+        html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
     }
     
-    html += `<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel}</span></div>`;
+    html += `<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel} (${Math.round(riskScore * 100)}%)</span></div>`;
     
     if (prevTide || nextTide) {
         html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
@@ -625,7 +678,6 @@ if (maxDepthInput) {
 function getExportData() {
     const diveSite = document.getElementById('diveSite');
     const dod = document.getElementById('dod');
-    const diveType = document.querySelector('input[name="diveType"]:checked')?.value || 'Boat';
     const categories = Array.from(selectedChips).join(', ');
     const maxDepth = document.getElementById('maxDepth');
     const coxName = document.getElementById('coxName');
@@ -637,7 +689,7 @@ function getExportData() {
     return {
         diveSite: diveSite?.value || '',
         dod: dod?.value || '',
-        diveType: diveType,
+        diveType: selectedDiveType,
         selectedTime: getSelectedTime(),
         categories: categories,
         maxDepth: maxDepth?.value || '',
@@ -651,28 +703,40 @@ function getExportData() {
 
 // EXPORT BUTTONS
 document.getElementById('whatsappBtn')?.addEventListener('click', () => {
+    if (!diveTypeSelected) {
+        alert('Please select a Dive Type first (Boat Dive or Shore Dive)');
+        return;
+    }
+    
     const data = getExportData();
     const weather = getMockWeatherData(currentStation, currentDate);
     const hourWeather = weather.find(w => parseInt(w.time) === currentHour);
     
-    let text = `🌊 DiveSense Dive Plan 🌊\n\n📍 Station: ${currentStation.name}\n🏊 Dive Site: ${data.diveSite}\n⏰ Time: ${data.selectedTime} (${data.diveType === 'Boat' ? 'Lines Away' : 'Kitted Brief'})\n\n🌡️ Conditions:\n• Wind: ${hourWeather?.windSpeed || '?'} Bft ${hourWeather ? degreesToDirection(hourWeather.windDir) : '?'}\n• Swell: ${hourWeather?.swellHeight?.toFixed(1) || '?'}m\n• Visibility: ${hourWeather?.visibility?.toFixed(1) || '?'}km\n• Air Temp: ${hourWeather?.airTemp?.toFixed(1) || '?'}°C\n\n📋 Plan:\n• DOD: ${data.dod}\n• Max Depth: ${data.maxDepth}m\n• Categories: ${data.categories}\n\n⚠️ Risk: ${currentRisk}\n\n_Always verify with official sources_`;
+    let text = `🌊 DiveSense Dive Plan 🌊\n\n📍 Station: ${currentStation.name}\n🏊 Dive Site: ${data.diveSite}\n⏰ Time: ${data.selectedTime} (${data.diveType === 'Boat' ? 'Lines Away' : 'Kitted Brief'})\n\n🌡️ Conditions:\n• Wind: ${hourWeather?.windSpeed || '?'} Bft ${hourWeather ? degreesToDirection(hourWeather.windDir) : '?'}\n• Swell: ${hourWeather?.swellHeight?.toFixed(1) || '?'}m\n• Visibility: ${hourWeather?.visibility?.toFixed(1) || '?'}km\n• Air Temp: ${hourWeather?.airTemp?.toFixed(1) || '?'}°C\n\n📋 Plan:\n• DOD: ${data.dod}\n• Max Depth: ${data.maxDepth}m\n• Categories: ${data.categories}\n\n⚠️ Risk: ${currentRisk} (${currentRiskPercent}%)\n\n_Always verify with official sources_`;
     
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 });
 
 document.getElementById('emailBtn')?.addEventListener('click', () => {
+    if (!diveTypeSelected) {
+        alert('Please select a Dive Type first (Boat Dive or Shore Dive)');
+        return;
+    }
+    
     const data = getExportData();
     const weather = getMockWeatherData(currentStation, currentDate);
     const hourWeather = weather.find(w => parseInt(w.time) === currentHour);
     
     const subject = `Dive Plan - ${data.diveSite} - ${formatDateDisplay(currentDate)}`;
-    let body = `DiveSense Dive Plan\n==================\nStation: ${currentStation.name}\nDate: ${formatDateDisplay(currentDate)}\nDive Site: ${data.diveSite}\nDive Type: ${data.diveType}\nTime: ${data.selectedTime}\n\nConditions:\n- Wind: ${hourWeather?.windSpeed || '?'} Bft ${hourWeather ? degreesToDirection(hourWeather.windDir) : '?'}\n- Swell: ${hourWeather?.swellHeight?.toFixed(1) || '?'}m\n- Visibility: ${hourWeather?.visibility?.toFixed(1) || '?'}km\n- Air Temp: ${hourWeather?.airTemp?.toFixed(1) || '?'}°C\n\nPlan Details:\n- DOD: ${data.dod}\n- Max Depth: ${data.maxDepth}m\n- Categories: ${data.categories}\n- Risk Level: ${currentRisk}\n\n---\nCreated with DiveSense`;
+    let body = `DiveSense Dive Plan\n==================\nStation: ${currentStation.name}\nDate: ${formatDateDisplay(currentDate)}\nDive Site: ${data.diveSite}\nDive Type: ${data.diveType}\nTime: ${data.selectedTime}\n\nConditions:\n- Wind: ${hourWeather?.windSpeed || '?'} Bft ${hourWeather ? degreesToDirection(hourWeather.windDir) : '?'}\n- Swell: ${hourWeather?.swellHeight?.toFixed(1) || '?'}m\n- Visibility: ${hourWeather?.visibility?.toFixed(1) || '?'}km\n- Air Temp: ${hourWeather?.airTemp?.toFixed(1) || '?'}°C\n\nPlan Details:\n- DOD: ${data.dod}\n- Max Depth: ${data.maxDepth}m\n- Categories: ${data.categories}\n- Risk Level: ${currentRisk} (${currentRiskPercent}%)\n\n---\nCreated with DiveSense`;
     
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 
 // LOAD ALL DATA
 function loadAllData() {
+    if (!diveTypeSelected) return;
+    
     updateTides();
     updateHourly();
     updateDetailed();
@@ -685,7 +749,9 @@ function init() {
     initDiveType();
     initChips();
     buildCalendar();
-    loadAllData();
+    
+    // Don't load data until dive type is selected
+    // Data will load when user selects Boat/Shore dive
 }
 
 if (document.readyState === 'loading') {
