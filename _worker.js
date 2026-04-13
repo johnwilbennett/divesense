@@ -1,9 +1,8 @@
-// _worker.js - Using coordinates instead of station names
+// _worker.js - Debug version
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     
-    // Station coordinates (latitude, longitude)
     const stationCoords = {
       cobh: { lat: 51.8489, lon: -8.2995 },
       kinsale: { lat: 51.7075, lon: -8.5225 },
@@ -14,82 +13,63 @@ export default {
       dingle: { lat: 52.1333, lon: -10.2667 }
     };
     
-    // Test endpoint
     if (url.pathname === '/api/test') {
-      return new Response(JSON.stringify({ 
-        message: 'Worker is working!'
-      }), {
+      return new Response(JSON.stringify({ message: 'Worker is working!' }), {
         headers: { 'Content-Type': 'application/json' }
       });
     }
     
-    // Check API key endpoint
-    if (url.pathname === '/api/check-key') {
-      const hasKey = !!env.WORLDTIDES_API_KEY;
-      return new Response(JSON.stringify({ 
-        hasApiKey: hasKey,
-        message: hasKey ? 'API key is set' : 'API key is NOT set'
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Tides endpoint
     if (url.pathname === '/api/tides') {
       try {
         const stationName = url.searchParams.get('station');
         const date = url.searchParams.get('date');
         const WT_API_KEY = env.WORLDTIDES_API_KEY;
         
-        // Check if API key exists
-        if (!WT_API_KEY) {
-          return new Response(JSON.stringify({ 
-            error: 'API key not configured'
-          }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-        
-        // Get coordinates for the station
         const coords = stationCoords[stationName.toLowerCase()];
         if (!coords) {
-          return new Response(JSON.stringify({ 
-            error: 'Unknown station',
-            message: `Station "${stationName}" not found`
-          }), {
+          return new Response(JSON.stringify({ error: 'Unknown station' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
           });
         }
         
-        // Build URL with lat/lon instead of station name
-        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
+        // Try different API versions
+        const apiUrlV3 = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
+        const apiUrlV2 = `https://www.worldtides.info/api?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
         
-        console.log(`Calling WorldTides for ${stationName} (${coords.lat}, ${coords.lon})`);
+        // Try v3 first
+        let response = await fetch(apiUrlV3);
+        let data = await response.json();
         
-        const response = await fetch(apiUrl);
-        const data = await response.json();
+        // If v3 fails, try v2
+        if (data.error || data.status === 400) {
+          response = await fetch(apiUrlV2);
+          data = await response.json();
+        }
         
-        return new Response(JSON.stringify(data), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'public, max-age=21600'
+        // Return the full response for debugging
+        return new Response(JSON.stringify({
+          station: stationName,
+          coords: coords,
+          date: date,
+          apiResponse: data,
+          urlsTried: {
+            v3: apiUrlV3.replace(WT_API_KEY, 'HIDDEN'),
+            v2: apiUrlV2.replace(WT_API_KEY, 'HIDDEN')
           }
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
         });
         
       } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: error.message 
-        }), {
+        return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
       }
     }
     
-    // Serve static files
     return env.ASSETS.fetch(request);
   }
 };
