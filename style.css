@@ -10,6 +10,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
   padding: 16px;
   min-height: 100vh;
+  font-size: 15.4px; /* Increased from 14px (+10%) */
 }
 
 .container {
@@ -21,12 +22,12 @@ body {
 /* Header */
 header {
   text-align: center;
-  padding: 20px 0;
-  margin-bottom: 20px;
+  padding: 22px 0 20px; /* Increased padding */
+  margin-bottom: 22px;
 }
 
 .neon-title {
-  font-size: 32px;
+  font-size: 35.2px; /* Increased from 32px (+10%) */
   font-weight: 800;
   background: linear-gradient(135deg, #2FFFEF 0%, #00FFAA 50%, #00AAFF 100%);
   -webkit-background-clip: text;
@@ -38,9 +39,9 @@ header {
 
 .subtitle {
   color: #00FFAA;
-  font-size: 10px;
+  font-size: 11px; /* Increased from 10px (+10%) */
   letter-spacing: 3px;
-  margin-top: 6px;
+  margin-top: 7px;
   text-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
 }
 
@@ -48,23 +49,23 @@ header {
 .card {
   background: rgba(2, 8, 20, 0.7);
   backdrop-filter: blur(12px);
-  border-radius: 24px;
-  padding: 20px;
-  margin-bottom: 16px;
+  border-radius: 26px; /* Slightly larger */
+  padding: 22px; /* Increased from 20px */
+  margin-bottom: 18px; /* Increased from 16px */
   border: 1px solid rgba(47, 255, 238, 0.2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   width: 100%;
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 15.4px; /* Increased from 14px (+10%) */
   font-weight: 700;
   background: linear-gradient(135deg, #2FFFEF 0%, #00FFAA 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  margin-bottom: 16px;
-  padding-left: 12px;
+  margin-bottom: 18px;
+  padding-left: 14px;
   border-left: 3px solid #2FFFEF;
 }
 
@@ -72,8 +73,8 @@ header {
 .station-scroll {
   display: flex;
   overflow-x: auto;
-  gap: 12px;
-  padding-bottom: 8px;
+  gap: 13px; /* Increased from 12px */
+  padding-bottom: 9px;
   width: 100%;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -85,22 +86,22 @@ header {
 
 .station-card {
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border-radius: 40px;
-  padding: 12px 24px;
-  min-width: 130px;
+  border-radius: 44px; /* Increased from 40px */
+  padding: 13px 26px; /* Increased from 12px 24px */
+  min-width: 143px; /* Increased from 130px (+10%) */
   text-align: center;
   cursor: pointer;
   border: 1px solid #1AA7A7;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: 15.4px; /* Increased from 14px (+10%) */
   font-weight: 600;
 }
 
 .station-card small {
-  font-size: 10px;
+  font-size: 11px; /* Increased from 10px (+10%) */
   color: #1AA7A7;
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .station-card.active {
@@ -118,8 +119,8 @@ header {
 /* Calendar */
 .calendar-container {
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 18px;
   border: 1px solid rgba(47, 255, 238, 0.2);
 }
 
@@ -127,31 +128,31 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 13px;
   border-bottom: 1px solid rgba(47, 255, 238, 0.2);
 }
 
 .calendar-month-year {
   color: #2FFFEF;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16.5px; /* Increased from 15px (+10%) */
 }
 
 .calendar-nav {
   display: flex;
-  gap: 10px;
+  gap: 11px;
 }
 
 .calendar-nav-btn {
   background: rgba(47, 255, 238, 0.1);
   border: 1px solid rgba(47, 255, 238, 0.3);
   color: #2FFFEF;
-  width: 30px;
-  height: 30px;
+  width: 33px; /* Increased from 30px (+10%) */
+  height: 33px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 17.6px; /* Increased from 16px (+10%) */
   transition: all 0.2s;
 }
 
@@ -163,22 +164,22 @@ header {
 .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 5px;
+  margin-bottom: 9px;
   text-align: center;
 }
 
 .calendar-weekday {
   color: #00FFAA;
-  font-size: 11px;
+  font-size: 12.1px; /* Increased from 11px (+10%) */
   font-weight: 600;
-  padding: 8px 0;
+  padding: 9px 0;
 }
 
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 5px;
 }
 
 .calendar-day {
@@ -186,7 +187,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 14.3px; /* Increased from 13px (+10%) */
   font-weight: 500;
   cursor: pointer;
   border-radius: 50%;
@@ -226,21 +227,21 @@ header {
 
 .radio-group {
   display: flex;
-  gap: 30px;
+  gap: 33px;
   justify-content: center;
-  margin: 10px 0;
+  margin: 11px 0;
 }
 
 .radio-group label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15.4px; /* Increased from 14px (+10%) */
   font-weight: 600;
-  padding: 8px 20px;
+  padding: 9px 22px;
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border-radius: 40px;
+  border-radius: 44px;
   border: 1px solid #1AA7A7;
   transition: all 0.3s ease;
 }
@@ -252,25 +253,25 @@ header {
 
 input[type="radio"] {
   accent-color: #2FFFEF;
-  width: 16px;
-  height: 16px;
+  width: 17.6px; /* Increased from 16px (+10%) */
+  height: 17.6px;
   cursor: pointer;
 }
 
 /* Form Elements */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   width: 100%;
 }
 
 .time-group {
-  margin-top: 8px;
+  margin-top: 9px;
 }
 
 .form-label {
-  font-size: 11px;
+  font-size: 12.1px; /* Increased from 11px (+10%) */
   color: #00FFAA;
-  margin-bottom: 10px;
+  margin-bottom: 11px;
   display: block;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -278,9 +279,9 @@ input[type="radio"] {
 
 /* Centered Time Label */
 .time-label-centered {
-  font-size: 13px;
+  font-size: 14.3px; /* Increased from 13px (+10%) */
   color: #00FFAA;
-  margin-bottom: 15px;
+  margin-bottom: 16.5px;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -291,39 +292,39 @@ input[type="radio"] {
   display: flex;
   justify-content: center;
   width: 100%;
-  margin-top: 12px;
+  margin-top: 13px;
 }
 
 .time-picker {
   display: flex;
-  gap: 25px;
+  gap: 27px;
   justify-content: center;
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border-radius: 24px;
-  padding: 20px;
+  border-radius: 26px;
+  padding: 22px;
   border: 1px solid rgba(47, 255, 238, 0.25);
 }
 
 .time-spinner {
   text-align: center;
-  width: 80px;
+  width: 88px; /* Increased from 80px (+10%) */
 }
 
 .spinner-label {
-  font-size: 10px;
+  font-size: 11px; /* Increased from 10px (+10%) */
   color: #00FFAA;
-  margin-bottom: 10px;
+  margin-bottom: 11px;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
 
 .spinner-wheel {
-  height: 220px;
+  height: 242px; /* Increased from 220px (+10%) */
   width: 100%;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   background: #01061a;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid #2FFFEF;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -336,8 +337,8 @@ input[type="radio"] {
 .spinner-option {
   scroll-snap-align: center;
   text-align: center;
-  padding: 14px 0;
-  font-size: 18px;
+  padding: 15.4px 0; /* Increased from 14px (+10%) */
+  font-size: 19.8px; /* Increased from 18px (+10%) */
   font-family: monospace;
   color: #1AA7A7;
   cursor: pointer;
@@ -350,15 +351,15 @@ input[type="radio"] {
   font-weight: bold;
   background: rgba(47, 255, 238, 0.2);
   transform: scale(1.08);
-  border-radius: 8px;
+  border-radius: 9px;
 }
 
 /* Hourly Scroll */
 .hourly-scroll {
   display: flex;
   overflow-x: auto;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 13px;
+  padding: 9px 0;
   width: 100%;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -369,10 +370,10 @@ input[type="radio"] {
 }
 
 .hourly-card {
-  min-width: 120px;
+  min-width: 132px; /* Increased from 120px (+10%) */
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  border-radius: 16px;
-  padding: 12px;
+  border-radius: 18px;
+  padding: 13px;
   border: 1px solid #1AA7A7;
   transition: all 0.3s;
   cursor: pointer;
@@ -394,7 +395,7 @@ input[type="radio"] {
 
 .hourly-card.highlight strong {
   color: #020B24;
-  font-size: 18px;
+  font-size: 19.8px; /* Increased from 18px (+10%) */
 }
 
 .hourly-card.highlight div {
@@ -406,12 +407,12 @@ input[type="radio"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 11px 13px;
   background: rgba(0, 170, 255, 0.05);
-  border-radius: 12px;
-  margin-bottom: 8px;
+  border-radius: 13px;
+  margin-bottom: 9px;
   border-left: 3px solid #2FFFEF;
-  font-size: 13px;
+  font-size: 14.3px; /* Increased from 13px (+10%) */
 }
 
 .springs-text { color: #ff6b6b; font-weight: 700; }
@@ -421,9 +422,9 @@ input[type="radio"] {
 .detail-row {
   display: flex;
   justify-content: space-between;
-  padding: 10px 0;
+  padding: 11px 0;
   border-bottom: 1px solid rgba(47, 255, 238, 0.1);
-  font-size: 13px;
+  font-size: 14.3px; /* Increased from 13px (+10%) */
 }
 
 .detail-row strong {
@@ -433,11 +434,11 @@ input[type="radio"] {
 
 /* Gradient Risk Bar */
 .risk-bar-gradient {
-  margin: 20px 0 8px;
-  border-radius: 30px;
+  margin: 22px 0 9px;
+  border-radius: 33px;
   overflow: hidden;
   width: 100%;
-  height: 40px;
+  height: 44px; /* Increased from 40px (+10%) */
   background: linear-gradient(90deg, #1f8a4c 0%, #e0b01a 30%, #e67e22 60%, #c0392b 100%);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   position: relative;
@@ -446,12 +447,12 @@ input[type="radio"] {
 .risk-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 4px;
+  margin-top: 5px;
   padding: 0 5px;
 }
 
 .risk-label {
-  font-size: 10px;
+  font-size: 11px; /* Increased from 10px (+10%) */
   font-weight: 600;
   color: #1AA7A7;
   text-transform: uppercase;
@@ -465,9 +466,9 @@ input[type="radio"] {
 
 .risk-pointer {
   text-align: center;
-  font-size: 11px;
+  font-size: 12.1px; /* Increased from 11px (+10%) */
   color: #2FFFEF;
-  margin-top: 6px;
+  margin-top: 7px;
   transition: margin-left 0.3s ease;
   font-weight: bold;
   text-shadow: 0 0 5px rgba(47, 255, 238, 0.5);
@@ -477,16 +478,16 @@ input[type="radio"] {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 11px;
   width: 100%;
 }
 
 .chips span {
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
-  padding: 8px 18px;
-  border-radius: 30px;
+  padding: 9px 20px;
+  border-radius: 33px;
   border: 1px solid #1AA7A7;
-  font-size: 12px;
+  font-size: 13.2px; /* Increased from 12px (+10%) */
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -510,11 +511,11 @@ input[type="radio"] {
   width: 100%;
   background: linear-gradient(135deg, #0a1a2f 0%, #061020 100%);
   border: 1px solid #1AA7A7;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 13px;
+  padding: 13px;
   color: #2FFFEF;
-  font-size: 14px;
-  margin-bottom: 10px;
+  font-size: 15.4px; /* Increased from 14px (+10%) */
+  margin-bottom: 11px;
 }
 
 .form-input:focus {
@@ -525,8 +526,8 @@ input[type="radio"] {
 
 .row {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 11px;
+  margin-bottom: 11px;
   width: 100%;
 }
 
@@ -537,44 +538,44 @@ input[type="radio"] {
 
 .checkbox-group {
   display: flex;
-  gap: 20px;
+  gap: 22px;
   flex-wrap: wrap;
-  margin: 10px 0;
+  margin: 11px 0;
 }
 
 .checkbox-group label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14.3px; /* Increased from 13px (+10%) */
 }
 
 input[type="checkbox"] {
   accent-color: #2FFFEF;
-  width: 16px;
-  height: 16px;
+  width: 17.6px;
+  height: 17.6px;
   cursor: pointer;
 }
 
 /* Saved Plans */
 .saved-plans {
-  max-height: 150px;
+  max-height: 165px;
   overflow-y: auto;
 }
 
 .saved-plans-empty {
   color: #1AA7A7;
   text-align: center;
-  padding: 20px;
-  font-size: 12px;
+  padding: 22px;
+  font-size: 13.2px;
 }
 
 .saved-plan-item {
   background: rgba(47, 255, 238, 0.1);
-  border-radius: 12px;
-  padding: 10px;
-  margin-bottom: 8px;
+  border-radius: 13px;
+  padding: 11px;
+  margin-bottom: 9px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -588,13 +589,13 @@ input[type="checkbox"] {
 }
 
 .saved-plan-name {
-  font-size: 13px;
+  font-size: 14.3px;
   font-weight: 600;
   color: #2FFFEF;
 }
 
 .saved-plan-details {
-  font-size: 10px;
+  font-size: 11px;
   color: #1AA7A7;
 }
 
@@ -602,10 +603,10 @@ input[type="checkbox"] {
   background: rgba(255, 107, 107, 0.2);
   border: none;
   color: #ff6b6b;
-  padding: 4px 8px;
-  border-radius: 8px;
+  padding: 5px 9px;
+  border-radius: 9px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12.1px;
   transition: all 0.2s;
 }
 
@@ -617,22 +618,22 @@ input[type="checkbox"] {
 /* Buttons */
 .export-buttons {
   display: flex;
-  gap: 12px;
+  gap: 13px;
   flex-wrap: wrap;
   width: 100%;
 }
 
 .btn {
   flex: 1;
-  padding: 12px;
-  border-radius: 40px;
-  font-size: 12px;
+  padding: 13px;
+  border-radius: 44px;
+  font-size: 13.2px; /* Increased from 12px (+10%) */
   font-weight: 700;
   cursor: pointer;
   border: none;
   transition: all 0.2s;
   text-align: center;
-  min-width: 100px;
+  min-width: 110px;
 }
 
 .btn:hover {
@@ -661,8 +662,8 @@ input[type="checkbox"] {
 }
 
 .loading-spinner {
-  width: 50px;
-  height: 50px;
+  width: 55px;
+  height: 55px;
   border: 3px solid rgba(47, 255, 238, 0.2);
   border-top-color: #2FFFEF;
   border-radius: 50%;
@@ -675,20 +676,20 @@ input[type="checkbox"] {
 
 /* Advisory */
 .advisory {
-  font-size: 9px;
+  font-size: 9.9px; /* Increased from 9px (+10%) */
   color: #1AA7A7;
   text-align: center;
-  padding: 20px 0 30px;
-  line-height: 1.4;
+  padding: 22px 0 33px;
+  line-height: 1.5;
   width: 100%;
   border-top: 1px solid rgba(47, 255, 238, 0.1);
-  margin-top: 10px;
+  margin-top: 11px;
 }
 
 /* Utility */
-.text-small { font-size: 10px; color: #00FFAA; }
-.mt-2 { margin-top: 10px; }
-.mb-2 { margin-bottom: 10px; }
+.text-small { font-size: 11px; color: #00FFAA; }
+.mt-2 { margin-top: 11px; }
+.mb-2 { margin-bottom: 11px; }
 
 /* Haptic feedback */
 .haptic-feedback {
@@ -708,21 +709,21 @@ input[type="checkbox"] {
   }
   
   .card {
-    padding: 16px;
+    padding: 18px;
   }
   
   .station-card {
-    padding: 10px 18px;
-    min-width: 110px;
+    padding: 11px 20px;
+    min-width: 121px;
   }
   
   .time-spinner {
-    width: 65px;
+    width: 72px;
   }
   
   .btn {
-    padding: 10px;
-    font-size: 11px;
-    min-width: 80px;
+    padding: 11px;
+    font-size: 12.1px;
+    min-width: 88px;
   }
 }
