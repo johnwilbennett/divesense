@@ -1,12 +1,12 @@
-// STATIONS DATA with correct WorldTides station IDs
+// STATIONS DATA with updated coordinates
 const stations = [
-  { name: "Cobh", county: "Co. Cork", lat: 51.8489, lon: -8.2995, worldtidesId: "cobh" },
-  { name: "Kinsale", county: "Co. Cork", lat: 51.7075, lon: -8.5225, worldtidesId: "kinsale" },
-  { name: "Baltimore", county: "Co. Cork", lat: 51.4833, lon: -9.3667, worldtidesId: "baltimore" },
-  { name: "Dunmanus Harbour", county: "Co. Cork", lat: 51.55, lon: -9.6833, worldtidesId: "dunmanus" },
-  { name: "Castletownbere", county: "Co. Cork", lat: 51.65, lon: -9.9167, worldtidesId: "castletownbere" },
-  { name: "Valentia Harbour", county: "Co. Kerry", lat: 51.9333, lon: -10.35, worldtidesId: "valentia" },
-  { name: "Dingle Harbour", county: "Co. Kerry", lat: 52.1333, lon: -10.2667, worldtidesId: "dingle" }
+  { name: "Cobh", county: "Co. Cork", lat: 51.85, lon: -8.3, worldtidesId: "cobh" },
+  { name: "Kinsale", county: "Co. Cork", lat: 51.7, lon: -8.517, worldtidesId: "kinsale" },
+  { name: "Baltimore", county: "Co. Cork", lat: 51.483, lon: -9.367, worldtidesId: "baltimore" },
+  { name: "Dunmanus Harbour", county: "Co. Cork", lat: 51.533, lon: -9.667, worldtidesId: "dunmanus" },
+  { name: "Castletownbere", county: "Co. Cork", lat: 51.65, lon: -9.9, worldtidesId: "castletownbere" },
+  { name: "Valentia Harbour", county: "Co. Kerry", lat: 51.933, lon: -10.3, worldtidesId: "valentia" },
+  { name: "Dingle Harbour", county: "Co. Kerry", lat: 52.117, lon: -10.25, worldtidesId: "dingle" }
 ];
 
 let currentStation = stations[1];
@@ -17,7 +17,6 @@ let currentHour = new Date().getHours();
 let currentMinute = new Date().getMinutes();
 let currentCalendarMonth = new Date();
 
-// Tide cache with 6-hour expiry
 let tideCache = new Map();
 
 const windDirections = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
@@ -89,7 +88,7 @@ function hapticFeedback() {
   const element = document.activeElement;
   if (element) {
     element.classList.add('haptic-feedback');
-    setTimeout(() => element.classList.remove('haptic-feedback'), 100);
+    setTimeout(function() { element.classList.remove('haptic-feedback'); }, 100);
   }
 }
 
@@ -104,7 +103,14 @@ function hideLoading() {
 }
 
 function saveUserPreferences() {
-  const diveType = document.querySelector('input[name="diveType"]:checked')?.value || 'Boat';
+  const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
+  let diveType = "Boat";
+  for (let i = 0; i < diveTypeRadios.length; i++) {
+    if (diveTypeRadios[i].checked) {
+      diveType = diveTypeRadios[i].value;
+      break;
+    }
+  }
   const preferences = {
     stationName: currentStation.name,
     diveType: diveType,
@@ -117,14 +123,19 @@ function loadUserPreferences() {
   const saved = localStorage.getItem('divesense_preferences');
   if (saved) {
     const prefs = JSON.parse(saved);
-    const savedStation = stations.find(s => s.name === prefs.stationName);
+    const savedStation = stations.find(function(s) { return s.name === prefs.stationName; });
     if (savedStation) currentStation = savedStation;
     if (prefs.diveType) {
-      const radio = document.querySelector(`input[name="diveType"][value="${prefs.diveType}"]`);
-      if (radio) radio.checked = true;
+      const radios = document.querySelectorAll('input[name="diveType"]');
+      for (let i = 0; i < radios.length; i++) {
+        if (radios[i].value === prefs.diveType) {
+          radios[i].checked = true;
+          break;
+        }
+      }
     }
     if (prefs.selectedChips) {
-      prefs.selectedChips.forEach(chip => selectedChips.add(chip));
+      prefs.selectedChips.forEach(function(chip) { selectedChips.add(chip); });
     }
   }
 }
@@ -139,18 +150,13 @@ function loadSavedPlans() {
   renderSavedPlans();
 }
 
-// REAL WORLD TIDES API with 6-hour cache - NO MOCK FALLBACK
-// REAL WORLD TIDES API - Updated to parse correct WorldTides format
-a// REAL WORLD TIDES API - Filter to selected date only
 async function fetchRealTideData(station, date) {
-  const cacheKey = `${station.worldtidesId}_${formatDateForAPI(date)}`;
+  const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
   
-  // Check cache first (6-hour expiry)
   if (tideCache.has(cacheKey)) {
     const cached = tideCache.get(cacheKey);
     if (now - cached.timestamp < 21600000) {
-      console.log("Returning cached tide data for", cacheKey);
       return cached.data;
     } else {
       tideCache.delete(cacheKey);
@@ -159,43 +165,36 @@ async function fetchRealTideData(station, date) {
   
   try {
     const formattedDate = formatDateForAPI(date);
-    const apiUrl = `/api/tides?station=${station.worldtidesId}&date=${formattedDate}`;
+    const apiUrl = "/api/tides?station=" + station.worldtidesId + "&date=" + formattedDate;
     
-    console.log("Fetching tide data from:", apiUrl);
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error("HTTP " + response.status);
     }
     
     const data = await response.json();
-    console.log("Tide API response received", data);
     
     if (data.error) {
-      console.warn("API error:", data.error);
       return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
     if (!data.extremes || data.extremes.length === 0) {
-      console.warn("No tide data available");
       return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
-    // Get the selected date in UTC (start of day)
     const selectedDateStart = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0));
     const selectedDateEnd = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59));
     
-    // Filter tides to ONLY the selected date
     let tideEvents = [];
     for (let i = 0; i < data.extremes.length; i++) {
       const extreme = data.extremes[i];
       const tideDate = new Date(extreme.dt * 1000);
       
-      // Only include tides that fall on the selected date
       if (tideDate >= selectedDateStart && tideDate <= selectedDateEnd) {
         const hours = tideDate.getUTCHours();
         const minutes = tideDate.getUTCMinutes();
-        const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        const timeStr = hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0');
         
         tideEvents.push({
           type: extreme.type === "High" ? "High" : "Low",
@@ -206,10 +205,8 @@ async function fetchRealTideData(station, date) {
       }
     }
     
-    // Sort by time
-    tideEvents.sort((a, b) => a.timestamp - b.timestamp);
+    tideEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
     
-    // Determine Spring or Neap tides
     function getTideType(events) {
       if (!events || events.length < 4) return "Unknown";
       let totalRange = 0;
@@ -225,39 +222,25 @@ async function fetchRealTideData(station, date) {
     const tideData = {
       events: tideEvents,
       moonPhase: getMoonPhase(date),
-      tideType: getTideType(tideEvents),
-      rawData: data
+      tideType: getTideType(tideEvents)
     };
     
-    // Cache the data
-    tideCache.set(cacheKey, {
-      data: tideData,
-      timestamp: now
-    });
-    
-    console.log("Tide data cached for", cacheKey, `(${tideEvents.length} events for selected date)`);
+    tideCache.set(cacheKey, { data: tideData, timestamp: now });
     return tideData;
     
   } catch (error) {
     console.error("Error fetching tide data:", error);
-    return { 
-      events: [], 
-      moonPhase: getMoonPhase(date), 
-      tideType: "Unknown", 
-      error: true, 
-      errorMessage: error.message 
-    };
+    return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
   }
 }
 
-// REAL WEATHER API - Open-Meteo (free, no API key required)
 async function fetchRealWeather(station, date) {
   try {
     const lat = station.lat;
     const lon = station.lon;
     const dateStr = formatDateForAPI(date);
     
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+    const weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&timezone=auto&start_date=" + dateStr + "&end_date=" + dateStr;
     
     const response = await fetch(weatherUrl);
     
@@ -287,7 +270,6 @@ async function fetchRealWeather(station, date) {
     for (let i = 0; i < data.hourly.time.length && i < 24; i++) {
       const time = new Date(data.hourly.time[i]);
       const hour = time.getHours();
-      
       const windSpeedKmh = data.hourly.wind_speed_10m[i];
       const estimatedSwell = windSpeedKmh * 0.03 + 0.3;
       
@@ -311,7 +293,6 @@ async function fetchRealWeather(station, date) {
     
   } catch (error) {
     console.error("Error fetching weather:", error);
-    // Return empty weather data on API failure
     const emptyHourly = [];
     for (let hour = 0; hour < 24; hour++) {
       emptyHourly.push({
@@ -335,15 +316,40 @@ async function fetchRealWeather(station, date) {
 }
 
 async function getFormattedExportText() {
-  const diveSite = document.getElementById('diveSite')?.value || '';
-  const dod = document.getElementById('dod')?.value || '';
-  const dodAsst = document.getElementById('dodAsst')?.value || '';
-  const coxName = document.getElementById('coxName')?.value || '';
-  const coxMode = document.querySelector('input[name="coxMode"]:checked')?.value || '';
-  const participation = document.querySelector('input[name="participation"]:checked')?.value || 'Open to All';
-  const maxDepth = document.getElementById('maxDepth')?.value || '';
-  const torches = document.getElementById('torches')?.checked || false;
-  const lifeJackets = document.getElementById('lifeJackets')?.checked || false;
+  const diveSiteElem = document.getElementById('diveSite');
+  const dodElem = document.getElementById('dod');
+  const dodAsstElem = document.getElementById('dodAsst');
+  const coxNameElem = document.getElementById('coxName');
+  const maxDepthElem = document.getElementById('maxDepth');
+  const torchesElem = document.getElementById('torches');
+  const lifeJacketsElem = document.getElementById('lifeJackets');
+  
+  const diveSite = diveSiteElem ? diveSiteElem.value : '';
+  const dod = dodElem ? dodElem.value : '';
+  const dodAsst = dodAsstElem ? dodAsstElem.value : '';
+  const coxName = coxNameElem ? coxNameElem.value : '';
+  const maxDepth = maxDepthElem ? maxDepthElem.value : '';
+  const torches = torchesElem ? torchesElem.checked : false;
+  const lifeJackets = lifeJacketsElem ? lifeJacketsElem.checked : false;
+  
+  const coxModeRadios = document.querySelectorAll('input[name="coxMode"]');
+  let coxMode = '';
+  for (let i = 0; i < coxModeRadios.length; i++) {
+    if (coxModeRadios[i].checked) {
+      coxMode = coxModeRadios[i].value;
+      break;
+    }
+  }
+  
+  const participationRadios = document.querySelectorAll('input[name="participation"]');
+  let participation = "Open to All";
+  for (let i = 0; i < participationRadios.length; i++) {
+    if (participationRadios[i].checked) {
+      participation = participationRadios[i].value;
+      break;
+    }
+  }
+  
   const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
   let diveType = "Boat";
   for (let i = 0; i < diveTypeRadios.length; i++) {
@@ -352,44 +358,62 @@ async function getFormattedExportText() {
       break;
     }
   }
+  
   const timePrefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
   
   const weather = await fetchRealWeather(currentStation, currentDate);
-  const hourWeather = weather.find(w => parseInt(w.time) === currentHour) || weather[12];
-  const tides = await fetchRealTideData(currentStation, currentDate);
-  const { prev: prevTide, next: nextTide } = getClosestTides(tides.events, currentHour, currentMinute);
+  let hourWeather = null;
+  for (let i = 0; i < weather.length; i++) {
+    if (parseInt(weather[i].time) === currentHour) {
+      hourWeather = weather[i];
+      break;
+    }
+  }
+  if (!hourWeather) hourWeather = weather[12];
   
-  const highWater = prevTide?.type === 'High' ? prevTide : (nextTide?.type === 'High' ? nextTide : null);
-  const lowWater = prevTide?.type === 'Low' ? prevTide : (nextTide?.type === 'Low' ? nextTide : null);
+  const tides = await fetchRealTideData(currentStation, currentDate);
+  
+  let prevTide = null;
+  let nextTide = null;
+  const targetMinutes = currentHour * 60 + currentMinute;
+  for (let i = 0; i < tides.events.length; i++) {
+    const tideParts = tides.events[i].time.split(':');
+    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+    if (tideMinutes <= targetMinutes) prevTide = tides.events[i];
+    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tides.events[i];
+  }
+  
+  const highWater = (prevTide && prevTide.type === 'High') ? prevTide : ((nextTide && nextTide.type === 'High') ? nextTide : null);
+  const lowWater = (prevTide && prevTide.type === 'Low') ? prevTide : ((nextTide && nextTide.type === 'Low') ? nextTide : null);
   
   const categories = Array.from(selectedChips).join(', ');
   
   let weatherText = '';
   if (hourWeather && !hourWeather.error) {
-    weatherText = `${getWeatherIcon(hourWeather.cloudCover, hourWeather.rain)} Wind: ${hourWeather.windSpeed} Bft ${degreesToDirection(hourWeather.windDir)}, Gusts: ${hourWeather.gusts} Bft, Swell: ${hourWeather.swellHeight.toFixed(1)}m / ${hourWeather.swellPeriod}s, Visibility: ${hourWeather.visibility.toFixed(1)}km, Rain: ${hourWeather.rain.toFixed(1)}mm, Temp: ${hourWeather.airTemp.toFixed(1)}°C`;
+    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + degreesToDirection(hourWeather.windDir) + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourWeather.swellHeight.toFixed(1) + "m / " + hourWeather.swellPeriod + "s, Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
   } else {
     weatherText = 'Weather data unavailable';
   }
   
-  let text = `Date: ${formatDateDisplay(currentDate)}\n`;
-  text += `Station Name: ${currentStation.name}\n`;
-  text += `Station Map Co-ordinates: ${currentStation.lat}, ${currentStation.lon}\n`;
-  text += `Google Maps Link: https://www.google.com/maps?q=${currentStation.lat},${currentStation.lon}\n`;
-  text += `Dive Site Name: ${diveSite || 'Not specified'}\n`;
-  text += `Dive Type: ${diveType}\n`;
-  text += `Time: ${getSelectedTime()} (${timePrefix})\n`;
-  text += `High Water: ${highWater ? `${highWater.time} (${highWater.height.toFixed(2)}m)` : 'N/A'}\n`;
-  text += `Low Water: ${lowWater ? `${lowWater.time} (${lowWater.height.toFixed(2)}m)` : 'N/A'}\n`;
-  text += `Weather at Dive Time: ${weatherText}\n`;
-  text += `DOD: ${dod || 'Not specified'}\n`;
-  text += `Assistant DOD: ${dodAsst || 'None'}\n`;
-  text += `Cox: ${coxName || 'N/A'} ${coxMode ? `(${coxMode} Cox'n)` : ''}\n`;
-  text += `Participation: ${participation}\n`;
-  text += `Max Depth: ${maxDepth || 'N/A'}m\n`;
-  if (torches) text += `Torches Required: ✓\n`;
-  if (lifeJackets) text += `Life Jackets Required: ✓\n`;
-  text += `Dive Categories: ${categories || 'None selected'}\n`;
-  text += `\n---\nCreated with DiveSense - Always verify with official sources`;
+  let text = "Date: " + formatDateDisplay(currentDate) + "\n";
+  text += "Station Name: " + currentStation.name + "\n";
+  text += "Station Map Co-ordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
+  text += "Google Maps Link: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
+  text += "Dive Site Name: " + (diveSite || 'Not specified') + "\n";
+  text += "Dive Type: " + diveType + "\n";
+  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n";
+  text += "High Water: " + (highWater ? highWater.time + " (" + highWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
+  text += "Low Water: " + (lowWater ? lowWater.time + " (" + lowWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
+  text += "Weather at Dive Time: " + weatherText + "\n";
+  text += "DOD: " + (dod || 'Not specified') + "\n";
+  text += "Assistant DOD: " + (dodAsst || 'None') + "\n";
+  text += "Cox: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
+  text += "Participation: " + participation + "\n";
+  text += "Max Depth: " + (maxDepth || 'N/A') + "m\n";
+  if (torches) text += "Torches Required: ✓\n";
+  if (lifeJackets) text += "Life Jackets Required: ✓\n";
+  text += "Dive Categories: " + (categories || 'None selected') + "\n";
+  text += "\n---\nCreated with DiveSense - Always verify with official sources";
   
   return text;
 }
@@ -406,23 +430,11 @@ function isSlackWaterTime(tideEvents, hour, minute) {
   return false;
 }
 
-function getClosestTides(tideEvents, targetHour, targetMinute) {
-  if (!tideEvents || tideEvents.length === 0) return { prev: null, next: null };
-  const targetMinutes = targetHour * 60 + targetMinute;
-  let prevTide = null, nextTide = null;
-  for (let i = 0; i < tideEvents.length; i++) {
-    const tideParts = tideEvents[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    if (tideMinutes <= targetMinutes) prevTide = tideEvents[i];
-    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tideEvents[i];
-  }
-  return { prev: prevTide, next: nextTide };
-}
-
 function getTideDirectionForHour(tideEvents, hour) {
   if (!tideEvents || tideEvents.length < 2) return "No Data";
   const targetMinutes = hour * 60;
-  let prevTide = null, nextTide = null;
+  let prevTide = null;
+  let nextTide = null;
   for (let i = 0; i < tideEvents.length; i++) {
     const tideParts = tideEvents[i].time.split(':');
     const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
@@ -441,7 +453,8 @@ function getTideDirectionForHour(tideEvents, hour) {
 function getTideDirection(tideEvents, targetHour, targetMinute) {
   if (!tideEvents || tideEvents.length < 2) return "No Data";
   const targetMinutes = targetHour * 60 + targetMinute;
-  let prevTide = null, nextTide = null;
+  let prevTide = null;
+  let nextTide = null;
   for (let i = 0; i < tideEvents.length; i++) {
     const tideParts = tideEvents[i].time.split(':');
     const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
@@ -460,52 +473,76 @@ function getTideDirection(tideEvents, targetHour, targetMinute) {
 function buildCalendar() {
   const container = document.getElementById('calendarContainer');
   if (!container) return;
+  
   const year = currentCalendarMonth.getFullYear();
   const month = currentCalendarMonth.getMonth();
   const firstDay = new Date(year, month, 1);
   const startDay = firstDay.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  let selectedDate = new Date(currentDate); selectedDate.setHours(0, 0, 0, 0);
-  const maxDate = new Date(today); maxDate.setDate(today.getDate() + 10);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let selectedDate = new Date(currentDate);
+  selectedDate.setHours(0, 0, 0, 0);
+  
+  const maxDate = new Date(today);
+  maxDate.setDate(today.getDate() + 10);
   const minDate = today;
+  
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  let html = `<div class="calendar-header"><div class="calendar-month-year">${monthNames[month]} ${year}</div><div class="calendar-nav"><button class="calendar-nav-btn" data-prev-month>&lt;</button><button class="calendar-nav-btn" data-next-month>&gt;</button></div></div><div class="calendar-weekdays"><div class="calendar-weekday">Su</div><div class="calendar-weekday">Mo</div><div class="calendar-weekday">Tu</div><div class="calendar-weekday">We</div><div class="calendar-weekday">Th</div><div class="calendar-weekday">Fr</div><div class="calendar-weekday">Sa</div></div><div class="calendar-days">`;
-  for (let i = 0; i < startDay; i++) html += '<div class="calendar-day other-month"></div>';
+  
+  let html = '<div class="calendar-header"><div class="calendar-month-year">' + monthNames[month] + ' ' + year + '</div><div class="calendar-nav"><button class="calendar-nav-btn" data-prev-month>&lt;</button><button class="calendar-nav-btn" data-next-month>&gt;</button></div></div><div class="calendar-weekdays"><div class="calendar-weekday">Su</div><div class="calendar-weekday">Mo</div><div class="calendar-weekday">Tu</div><div class="calendar-weekday">We</div><div class="calendar-weekday">Th</div><div class="calendar-weekday">Fr</div><div class="calendar-weekday">Sa</div></div><div class="calendar-days">';
+  
+  for (let i = 0; i < startDay; i++) {
+    html += '<div class="calendar-day other-month"></div>';
+  }
+  
   for (let day = 1; day <= daysInMonth; day++) {
-    const currentDateObj = new Date(year, month, day); currentDateObj.setHours(0, 0, 0, 0);
+    const currentDateObj = new Date(year, month, day);
+    currentDateObj.setHours(0, 0, 0, 0);
     const isSelected = currentDateObj.getTime() === selectedDate.getTime();
     const isToday = currentDateObj.getTime() === today.getTime();
     const isDisabled = currentDateObj < minDate || currentDateObj > maxDate;
+    
     let classes = 'calendar-day';
     if (isSelected) classes += ' selected';
     if (isToday) classes += ' today';
     if (isDisabled) classes += ' disabled';
-    html += `<div class="${classes}" data-date="${currentDateObj.toISOString()}">${day}</div>`;
+    
+    html += '<div class="' + classes + '" data-date="' + currentDateObj.toISOString() + '">' + day + '</div>';
   }
+  
   html += '</div>';
   container.innerHTML = html;
-  document.querySelectorAll('.calendar-day:not(.disabled):not(.other-month)').forEach(day => {
-    day.addEventListener('click', () => {
+  
+  const days = document.querySelectorAll('.calendar-day:not(.disabled):not(.other-month)');
+  for (let i = 0; i < days.length; i++) {
+    days[i].addEventListener('click', function() {
       hapticFeedback();
-      const date = new Date(day.dataset.date);
+      const date = new Date(this.dataset.date);
       currentDate = date;
       buildCalendar();
       loadAllData();
     });
-  });
-  document.querySelectorAll('.calendar-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.prevMonth !== undefined) currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
-      else if (btn.dataset.nextMonth !== undefined) currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
+  }
+  
+  const navBtns = document.querySelectorAll('.calendar-nav-btn');
+  for (let i = 0; i < navBtns.length; i++) {
+    navBtns[i].addEventListener('click', function() {
+      if (this.dataset.prevMonth !== undefined) {
+        currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
+      } else if (this.dataset.nextMonth !== undefined) {
+        currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
+      }
       buildCalendar();
     });
-  });
+  }
 }
 
 function initStations() {
   const container = document.getElementById('stationScroll');
   if (!container) return;
+  
   let html = '';
   for (let i = 0; i < stations.length; i++) {
     const station = stations[i];
@@ -513,39 +550,44 @@ function initStations() {
     html += '<div class="station-card ' + activeClass + '" data-idx="' + i + '">' + station.name + '<br><small>' + station.county + '</small></div>';
   }
   container.innerHTML = html;
-  document.querySelectorAll('.station-card').forEach(card => {
-    card.addEventListener('click', () => {
+  
+  const cards = document.querySelectorAll('.station-card');
+  for (let i = 0; i < cards.length; i++) {
+    cards[i].addEventListener('click', function() {
       hapticFeedback();
-      const idx = parseInt(card.dataset.idx);
+      const idx = parseInt(this.dataset.idx);
       currentStation = stations[idx];
       initStations();
       loadAllData();
     });
-  });
+  }
 }
 
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
   if (!hourWheel || !minuteWheel) return;
+  
   hourWheel.innerHTML = '';
   minuteWheel.innerHTML = '';
   
   const hourValues = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1];
-  for (let h of hourValues) {
+  for (let h = 0; h < hourValues.length; h++) {
+    const val = hourValues[h];
     const option = document.createElement('div');
     option.className = 'spinner-option';
-    option.textContent = h.toString().padStart(2, '0');
-    option.dataset.value = h;
+    option.textContent = val.toString().padStart(2, '0');
+    option.dataset.value = val;
     hourWheel.appendChild(option);
   }
   
   const minuteValues = [58, 59, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 0, 1];
-  for (let m of minuteValues) {
+  for (let m = 0; m < minuteValues.length; m++) {
+    const val = minuteValues[m];
     const option = document.createElement('div');
     option.className = 'spinner-option';
-    option.textContent = m.toString().padStart(2, '0');
-    option.dataset.value = m;
+    option.textContent = val.toString().padStart(2, '0');
+    option.dataset.value = val;
     minuteWheel.appendChild(option);
   }
   
@@ -562,39 +604,46 @@ function initTimeSpinners() {
   }
   
   function updateHighlights() {
-    document.querySelectorAll('#hourWheel .spinner-option').forEach(opt => {
-      if (parseInt(opt.dataset.value) === currentHour) {
-        opt.classList.add('selected');
+    const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
+    for (let i = 0; i < hourOptions.length; i++) {
+      if (parseInt(hourOptions[i].dataset.value) === currentHour) {
+        hourOptions[i].classList.add('selected');
       } else {
-        opt.classList.remove('selected');
+        hourOptions[i].classList.remove('selected');
       }
-    });
-    document.querySelectorAll('#minuteWheel .spinner-option').forEach(opt => {
-      if (parseInt(opt.dataset.value) === currentMinute) {
-        opt.classList.add('selected');
+    }
+    const minuteOptions = document.querySelectorAll('#minuteWheel .spinner-option');
+    for (let i = 0; i < minuteOptions.length; i++) {
+      if (parseInt(minuteOptions[i].dataset.value) === currentMinute) {
+        minuteOptions[i].classList.add('selected');
       } else {
-        opt.classList.remove('selected');
+        minuteOptions[i].classList.remove('selected');
       }
-    });
+    }
     updateTimeLabel();
   }
   
   function scrollToValue(wheel, value) {
-    const option = Array.from(wheel.children).find(opt => parseInt(opt.dataset.value) === value);
-    if (option) {
-      option.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const options = wheel.children;
+    for (let i = 0; i < options.length; i++) {
+      if (parseInt(options[i].dataset.value) === value) {
+        options[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
+        break;
+      }
     }
   }
   
   let scrollTimeout;
   
-  hourWheel.addEventListener('scroll', () => {
+  hourWheel.addEventListener('scroll', function() {
     if (scrollTimeout) clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
+    scrollTimeout = setTimeout(function() {
       const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
       let closest = null;
       let minDist = Infinity;
-      Array.from(hourWheel.children).forEach(opt => {
+      const options = hourWheel.children;
+      for (let i = 0; i < options.length; i++) {
+        const opt = options[i];
         const rect = opt.getBoundingClientRect();
         const wheelRect = hourWheel.getBoundingClientRect();
         const optCenter = rect.top + rect.height / 2;
@@ -604,7 +653,7 @@ function initTimeSpinners() {
           minDist = dist;
           closest = opt;
         }
-      });
+      }
       if (closest) {
         let newHour = parseInt(closest.dataset.value);
         newHour = getRealHourFromValue(newHour);
@@ -618,13 +667,15 @@ function initTimeSpinners() {
     }, 30);
   });
   
-  minuteWheel.addEventListener('scroll', () => {
+  minuteWheel.addEventListener('scroll', function() {
     if (scrollTimeout) clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
+    scrollTimeout = setTimeout(function() {
       const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
       let closest = null;
       let minDist = Infinity;
-      Array.from(minuteWheel.children).forEach(opt => {
+      const options = minuteWheel.children;
+      for (let i = 0; i < options.length; i++) {
+        const opt = options[i];
         const rect = opt.getBoundingClientRect();
         const wheelRect = minuteWheel.getBoundingClientRect();
         const optCenter = rect.top + rect.height / 2;
@@ -634,7 +685,7 @@ function initTimeSpinners() {
           minDist = dist;
           closest = opt;
         }
-      });
+      }
       if (closest) {
         let newMinute = parseInt(closest.dataset.value);
         newMinute = getRealMinuteFromValue(newMinute);
@@ -649,7 +700,7 @@ function initTimeSpinners() {
   });
   
   updateHighlights();
-  setTimeout(() => {
+  setTimeout(function() {
     scrollToValue(hourWheel, currentHour);
     scrollToValue(minuteWheel, currentMinute);
   }, 100);
@@ -658,23 +709,34 @@ function initTimeSpinners() {
 function initDiveType() {
   const radios = document.querySelectorAll('input[name="diveType"]');
   const coxField = document.getElementById('coxField');
-  radios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      if (coxField) coxField.style.display = e.target.value === 'Boat' ? 'block' : 'none';
-      document.getElementById('lifeJackets').checked = e.target.value === 'Boat';
+  
+  for (let i = 0; i < radios.length; i++) {
+    radios[i].addEventListener('change', function(e) {
+      if (coxField) {
+        coxField.style.display = e.target.value === 'Boat' ? 'block' : 'none';
+      }
+      const lifeJackets = document.getElementById('lifeJackets');
+      if (lifeJackets) {
+        lifeJackets.checked = e.target.value === 'Boat';
+      }
       updateTimeLabel();
       saveUserPreferences();
     });
-  });
+  }
+  
   if (coxField) coxField.style.display = 'block';
   updateTimeLabel();
 }
 
 function renderChips() {
-  document.querySelectorAll('.chips span').forEach(chip => {
-    if (selectedChips.has(chip.dataset.chip)) chip.classList.add('active-chip');
-    else chip.classList.remove('active-chip');
-  });
+  const chips = document.querySelectorAll('.chips span');
+  for (let i = 0; i < chips.length; i++) {
+    if (selectedChips.has(chips[i].dataset.chip)) {
+      chips[i].classList.add('active-chip');
+    } else {
+      chips[i].classList.remove('active-chip');
+    }
+  }
 }
 
 async function updateTides() {
@@ -686,20 +748,21 @@ async function updateTides() {
     return;
   }
   
-  const tideTypeClass = tides.tideType === 'Springs' ? 'springs-text' : (tides.tideType === 'Neaps' ? 'neaps-text' : '');
-  const tideTypeIcon = tides.tideType === 'Springs' ? '🌕' : (tides.tideType === 'Neaps' ? '🌙' : '');
+  const tideTypeClass = (tides.tideType === 'Springs') ? 'springs-text' : (tides.tideType === 'Neaps' ? 'neaps-text' : '');
+  const tideTypeIcon = (tides.tideType === 'Springs') ? '🌕' : (tides.tideType === 'Neaps' ? '🌙' : '');
   
   let html = '';
   if (tides.tideType !== 'Unknown') {
-    html += `<div class="${tideTypeClass}" style="font-size:1.2rem; margin-bottom:10px;">${tideTypeIcon} ${tides.tideType.toUpperCase()} TIDES</div>`;
+    html += '<div class="' + tideTypeClass + '" style="font-size:1.2rem; margin-bottom:10px;">' + tideTypeIcon + ' ' + tides.tideType.toUpperCase() + ' TIDES</div>';
   }
   
-  tides.events.forEach(e => {
-    const tideIcon = e.type === 'High' ? '🌊 HIGH' : '⬇️ LOW';
-    html += `<div class="tide-event"><span>${tideIcon}</span><span>${e.time}</span><span>${e.height.toFixed(2)}m</span></div>`;
-  });
+  for (let i = 0; i < tides.events.length; i++) {
+    const e = tides.events[i];
+    const tideIcon = (e.type === 'High') ? '🌊 HIGH' : '⬇️ LOW';
+    html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
+  }
   
-  html += `<div class="text-small mt-2">🌙 ${tides.moonPhase}</div>`;
+  html += '<div class="text-small mt-2">🌙 ' + tides.moonPhase + '</div>';
   const tideDiv = document.getElementById('tideData');
   if (tideDiv) tideDiv.innerHTML = html;
 }
@@ -717,7 +780,8 @@ async function updateHourly() {
   }
   
   let html = '';
-  for (const hour of weather) {
+  for (let i = 0; i < weather.length; i++) {
+    const hour = weather[i];
     const hourNum = parseInt(hour.time);
     const tideDirection = getTideDirectionForHour(tides.events, hourNum);
     let tideIcon = '';
@@ -727,14 +791,14 @@ async function updateHourly() {
     else tideIcon = '❓';
     
     const weatherIcon = getWeatherIcon(hour.cloudCover, hour.rain);
-    const highlightClass = hourNum === selectedHour ? 'highlight' : '';
-    html += `<div class="hourly-card ${highlightClass}">
-      <strong>${hour.time}</strong>
-      <div>${weatherIcon} ${hour.windSpeed} Bft</div>
-      <div>${degreesToDirection(hour.windDir)}</div>
-      <div>🌊 ${hour.swellHeight.toFixed(1)}m / ${hour.swellPeriod}s</div>
-      <div style="font-size: 10px; margin-top: 4px;">${tideIcon} ${tideDirection}</div>
-    </div>`;
+    const highlightClass = (hourNum === selectedHour) ? 'highlight' : '';
+    html += '<div class="hourly-card ' + highlightClass + '">';
+    html += '<strong>' + hour.time + '</strong>';
+    html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft</div>';
+    html += '<div>' + degreesToDirection(hour.windDir) + '</div>';
+    html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm / ' + hour.swellPeriod + 's</div>';
+    html += '<div style="font-size: 10px; margin-top: 4px;">' + tideIcon + ' ' + tideDirection + '</div>';
+    html += '</div>';
   }
   container.innerHTML = html;
 }
@@ -742,9 +806,28 @@ async function updateHourly() {
 async function updateDetailed() {
   const weather = await fetchRealWeather(currentStation, currentDate);
   const tides = await fetchRealTideData(currentStation, currentDate);
-  const selectedHour = currentHour, selectedMinute = currentMinute;
-  let hourData = weather.find(w => parseInt(w.time) === selectedHour) || weather[12];
-  const { prev: prevTide, next: nextTide } = getClosestTides(tides.events, selectedHour, selectedMinute);
+  const selectedHour = currentHour;
+  const selectedMinute = currentMinute;
+  
+  let hourData = null;
+  for (let i = 0; i < weather.length; i++) {
+    if (parseInt(weather[i].time) === selectedHour) {
+      hourData = weather[i];
+      break;
+    }
+  }
+  if (!hourData) hourData = weather[12];
+  
+  let prevTide = null;
+  let nextTide = null;
+  const targetMinutes = selectedHour * 60 + selectedMinute;
+  for (let i = 0; i < tides.events.length; i++) {
+    const tideParts = tides.events[i].time.split(':');
+    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+    if (tideMinutes <= targetMinutes) prevTide = tides.events[i];
+    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tides.events[i];
+  }
+  
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
   const tideDirection = getTideDirection(tides.events, selectedHour, selectedMinute);
   
@@ -763,8 +846,9 @@ async function updateDetailed() {
   
   const riskBar = document.getElementById('riskBarGradient');
   if (riskBar) {
-    riskBar.style.background = `linear-gradient(90deg, #1f8a4c 0%, #1f8a4c ${Math.max(0, riskPercent - 15)}%, #e0b01a ${Math.max(0, riskPercent - 5)}%, #e67e22 ${Math.min(100, riskPercent + 5)}%, #c0392b ${Math.min(100, riskPercent + 20)}%)`;
+    riskBar.style.background = 'linear-gradient(90deg, #1f8a4c 0%, #1f8a4c ' + Math.max(0, riskPercent - 15) + '%, #e0b01a ' + Math.max(0, riskPercent - 5) + '%, #e67e22 ' + Math.min(100, riskPercent + 5) + '%, #c0392b ' + Math.min(100, riskPercent + 20) + '%)';
   }
+  
   const riskPointer = document.getElementById('riskPointer');
   if (riskPointer) riskPointer.style.marginLeft = riskPercent + '%';
   
@@ -777,41 +861,40 @@ async function updateDetailed() {
   
   if (hourData && !hourData.error) {
     const weatherIcon = getWeatherIcon(hourData.cloudCover, hourData.rain);
-    html = `
-      <div class="detail-row"><strong>Wind:</strong> ${weatherIcon} ${hourData.windSpeed} Bft ${degreesToDirection(hourData.windDir)} (Gusts ${hourData.gusts} Bft)</div>
-      <div class="detail-row"><strong>Visibility:</strong> ${hourData.visibility.toFixed(1)} km</div>
-      <div class="detail-row"><strong>Rain:</strong> ${hourData.rain.toFixed(1)} mm</div>
-      <div class="detail-row"><strong>Cloud Cover:</strong> ${hourData.cloudCover}%</div>
-      <div class="detail-row"><strong>Air Temp:</strong> ${hourData.airTemp.toFixed(1)}°C</div>
-      <div class="detail-row"><strong>UV Index:</strong> ${hourData.uvIndex}</div>
-      <div class="detail-row"><strong>Swell:</strong> ${hourData.swellHeight.toFixed(1)}m / ${hourData.swellPeriod}s from ${degreesToDirection(hourData.swellDir)}</div>`;
+    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourData.windSpeed + ' Bft ' + degreesToDirection(hourData.windDir) + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
+    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
+    html += '<div class="detail-row"><strong>Rain:</strong> ' + hourData.rain.toFixed(1) + ' mm</div>';
+    html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourData.cloudCover + '%</div>';
+    html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourData.airTemp.toFixed(1) + '°C</div>';
+    html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourData.uvIndex + '</div>';
+    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm / ' + hourData.swellPeriod + 's from ' + degreesToDirection(hourData.swellDir) + '</div>';
   } else {
-    html = `<div class="detail-row">⚠️ Weather data unavailable</div>`;
+    html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   }
   
   if (isSlackWater && tides.events.length > 0) {
-    html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
+    html += '<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>';
   }
   
-  html += `<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ${riskColor}; font-weight: bold;">${riskLevel}</span></div>`;
+  html += '<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ' + riskColor + '; font-weight: bold;">' + riskLevel + '</span></div>';
   
   if ((prevTide || nextTide) && tides.events.length > 0) {
-    html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
+    html += '<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>';
     if (prevTide) {
       const timeDiff = Math.abs((selectedHour * 60 + selectedMinute) - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-      html += `<div class="detail-row">← Previous ${prevTide.type} at ${prevTide.time} (${prevTide.height.toFixed(2)}m) - ${Math.floor(timeDiff / 60)}h ${timeDiff % 60}m before</div>`;
+      html += '<div class="detail-row">← Previous ' + prevTide.type + ' at ' + prevTide.time + ' (' + prevTide.height.toFixed(2) + 'm) - ' + Math.floor(timeDiff / 60) + 'h ' + (timeDiff % 60) + 'm before</div>';
     }
     if (nextTide) {
       const timeDiff = Math.abs((parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])) - (selectedHour * 60 + selectedMinute));
-      html += `<div class="detail-row">→ Next ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m) - ${Math.floor(timeDiff / 60)}h ${timeDiff % 60}m after</div>`;
+      html += '<div class="detail-row">→ Next ' + nextTide.type + ' at ' + nextTide.time + ' (' + nextTide.height.toFixed(2) + 'm) - ' + Math.floor(timeDiff / 60) + 'h ' + (timeDiff % 60) + 'm after</div>';
     }
-    html += `<div class="detail-row"><strong>🌊 Tide Direction:</strong> ${tideDirection}</div>`;
+    html += '<div class="detail-row"><strong>🌊 Tide Direction:</strong> ' + tideDirection + '</div>';
     if (tides.tideType !== 'Unknown') {
-      html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)'}</div>`;
+      html += '<div class="detail-row">' + (tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)') + '</div>';
     }
-    html += `<div class="detail-row">🌙 ${tides.moonPhase}</div>`;
+    html += '<div class="detail-row">🌙 ' + tides.moonPhase + '</div>';
   } else if (tides.events.length === 0) {
-    html += `<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>`;
+    html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
   }
   
   const panel = document.getElementById('detailedPanel');
@@ -822,29 +905,47 @@ function initChips() {
   const categories = ["Reef", "Wreck", "Drift", "Deep", "Night", "Snorkel", "Kelp", "Photography", "Navigation", "Training", "Citizen Science", "Fitness Test"];
   const container = document.getElementById('chipsContainer');
   if (!container) return;
+  
   let html = '';
-  categories.forEach(cat => { html += `<span data-chip="${cat}">${cat}</span>`; });
+  for (let i = 0; i < categories.length; i++) {
+    html += '<span data-chip="' + categories[i] + '">' + categories[i] + '</span>';
+  }
   container.innerHTML = html;
-  document.querySelectorAll('.chips span').forEach(chip => {
-    chip.addEventListener('click', () => {
+  
+  const chips = document.querySelectorAll('.chips span');
+  for (let i = 0; i < chips.length; i++) {
+    chips[i].addEventListener('click', function() {
       hapticFeedback();
-      chip.classList.toggle('active-chip');
-      const chipName = chip.dataset.chip;
-      if (chip.classList.contains('active-chip')) selectedChips.add(chipName);
-      else selectedChips.delete(chipName);
+      this.classList.toggle('active-chip');
+      const chipName = this.dataset.chip;
+      if (this.classList.contains('active-chip')) {
+        selectedChips.add(chipName);
+      } else {
+        selectedChips.delete(chipName);
+      }
       saveUserPreferences();
     });
-  });
+  }
   renderChips();
 }
 
 function saveCurrentPlan() {
-  (async () => {
-    const diveSite = document.getElementById('diveSite')?.value || 'Unnamed Dive';
-    const planName = prompt('Enter a name for this dive plan:', diveSite);
-    if (!planName) return;
-    
+  const diveSiteElem = document.getElementById('diveSite');
+  const diveSite = diveSiteElem ? diveSiteElem.value : 'Unnamed Dive';
+  const planName = prompt('Enter a name for this dive plan:', diveSite);
+  if (!planName) return;
+  
+  (async function() {
     const exportText = await getFormattedExportText();
+    const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
+    let diveType = "Boat";
+    for (let i = 0; i < diveTypeRadios.length; i++) {
+      if (diveTypeRadios[i].checked) {
+        diveType = diveTypeRadios[i].value;
+        break;
+      }
+    }
+    const maxDepthElem = document.getElementById('maxDepth');
     const plan = {
       id: Date.now(),
       name: planName,
@@ -852,8 +953,8 @@ function saveCurrentPlan() {
       station: currentStation.name,
       date: formatDateDisplay(currentDate),
       time: getSelectedTime(),
-      diveType: document.querySelector('input[name="diveType"]:checked')?.value,
-      maxDepth: document.getElementById('maxDepth')?.value,
+      diveType: diveType,
+      maxDepth: maxDepthElem ? maxDepthElem.value : '',
       categories: Array.from(selectedChips),
       risk: currentRisk
     };
@@ -867,38 +968,44 @@ function saveCurrentPlan() {
 }
 
 function deleteSavedPlan(planId) {
-  savedPlans = savedPlans.filter(p => p.id !== planId);
+  savedPlans = savedPlans.filter(function(p) { return p.id !== planId; });
   localStorage.setItem('divesense_plans', JSON.stringify(savedPlans));
   renderSavedPlans();
   showNotification('Plan deleted');
 }
 
 function loadSavedPlan(plan) {
-  const savedStation = stations.find(s => s.name === plan.station);
+  const savedStation = stations.find(function(s) { return s.name === plan.station; });
   if (savedStation) currentStation = savedStation;
   currentDate = new Date(plan.date.split('-').reverse().join('-'));
-  const [hour, minute] = plan.time.split(':');
-  currentHour = parseInt(hour);
-  currentMinute = parseInt(minute);
+  const timeParts = plan.time.split(':');
+  currentHour = parseInt(timeParts[0]);
+  currentMinute = parseInt(timeParts[1]);
   
-  const radio = document.querySelector(`input[name="diveType"][value="${plan.diveType}"]`);
-  if (radio) radio.checked = true;
-  
-  if (document.getElementById('maxDepth')) {
-    document.getElementById('maxDepth').value = plan.maxDepth;
+  const radios = document.querySelectorAll('input[name="diveType"]');
+  for (let i = 0; i < radios.length; i++) {
+    if (radios[i].value === plan.diveType) {
+      radios[i].checked = true;
+      break;
+    }
   }
   
+  const maxDepthElem = document.getElementById('maxDepth');
+  if (maxDepthElem) maxDepthElem.value = plan.maxDepth;
+  
   selectedChips.clear();
-  plan.categories.forEach(cat => selectedChips.add(cat));
+  for (let i = 0; i < plan.categories.length; i++) {
+    selectedChips.add(plan.categories[i]);
+  }
   
   initStations();
   initTimeSpinners();
   buildCalendar();
   loadAllData();
   
-  setTimeout(() => {
+  setTimeout(function() {
     renderChips();
-    showNotification(`Loaded: ${plan.name}`);
+    showNotification('Loaded: ' + plan.name);
   }, 100);
 }
 
@@ -912,38 +1019,38 @@ function renderSavedPlans() {
   }
   
   let html = '';
-  savedPlans.forEach(plan => {
-    html += `
-      <div class="saved-plan-item" data-plan-id="${plan.id}">
-        <div>
-          <div class="saved-plan-name">${escapeHtml(plan.name)}</div>
-          <div class="saved-plan-details">${plan.station} | ${plan.date} | ${plan.time} | Risk: ${plan.risk}</div>
-        </div>
-        <button class="delete-plan-btn" data-plan-id="${plan.id}">🗑️</button>
-      </div>
-    `;
-  });
+  for (let i = 0; i < savedPlans.length; i++) {
+    const plan = savedPlans[i];
+    html += '<div class="saved-plan-item" data-plan-id="' + plan.id + '">';
+    html += '<div><div class="saved-plan-name">' + escapeHtml(plan.name) + '</div>';
+    html += '<div class="saved-plan-details">' + plan.station + ' | ' + plan.date + ' | ' + plan.time + ' | Risk: ' + plan.risk + '</div></div>';
+    html += '<button class="delete-plan-btn" data-plan-id="' + plan.id + '">🗑️</button>';
+    html += '</div>';
+  }
   container.innerHTML = html;
   
-  container.querySelectorAll('.saved-plan-item').forEach(item => {
+  const items = document.querySelectorAll('.saved-plan-item');
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     const planId = parseInt(item.dataset.planId);
-    const plan = savedPlans.find(p => p.id === planId);
+    const plan = savedPlans.find(function(p) { return p.id === planId; });
     if (plan) {
-      item.addEventListener('click', (e) => {
+      item.addEventListener('click', function(e) {
         if (!e.target.classList.contains('delete-plan-btn')) {
           loadSavedPlan(plan);
         }
       });
     }
-  });
+  }
   
-  container.querySelectorAll('.delete-plan-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  const deleteBtns = document.querySelectorAll('.delete-plan-btn');
+  for (let i = 0; i < deleteBtns.length; i++) {
+    deleteBtns[i].addEventListener('click', function(e) {
       e.stopPropagation();
-      const planId = parseInt(btn.dataset.planId);
+      const planId = parseInt(this.dataset.planId);
       deleteSavedPlan(planId);
     });
-  });
+  }
 }
 
 function escapeHtml(text) {
@@ -955,30 +1062,17 @@ function escapeHtml(text) {
 function showNotification(message) {
   const notification = document.createElement('div');
   notification.textContent = message;
-  notification.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(47, 255, 238, 0.9);
-    color: #020B24;
-    padding: 10px 20px;
-    border-radius: 30px;
-    font-size: 12px;
-    font-weight: bold;
-    z-index: 2000;
-    animation: fadeOut 2s forwards;
-  `;
+  notification.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(47, 255, 238, 0.9); color: #020B24; padding: 10px 20px; border-radius: 30px; font-size: 12px; font-weight: bold; z-index: 2000; animation: fadeOut 2s forwards;';
   document.body.appendChild(notification);
-  setTimeout(() => notification.remove(), 2000);
+  setTimeout(function() { notification.remove(); }, 2000);
 }
 
 const maxDepthInput = document.getElementById('maxDepth');
 if (maxDepthInput) {
-  maxDepthInput.addEventListener('change', (e) => {
+  maxDepthInput.addEventListener('change', function(e) {
     const depth = parseInt(e.target.value);
     if (depth >= 21) {
-      const deepChip = Array.from(document.querySelectorAll('.chips span')).find(c => c.dataset.chip === 'Deep');
+      const deepChip = Array.from(document.querySelectorAll('.chips span')).find(function(c) { return c.dataset.chip === 'Deep'; });
       if (deepChip && !deepChip.classList.contains('active-chip')) {
         deepChip.classList.add('active-chip');
         selectedChips.add('Deep');
@@ -989,26 +1083,39 @@ if (maxDepthInput) {
   });
 }
 
-document.getElementById('whatsappBtn')?.addEventListener('click', async () => {
-  const text = await getFormattedExportText();
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-});
+const whatsappBtn = document.getElementById('whatsappBtn');
+if (whatsappBtn) {
+  whatsappBtn.addEventListener('click', async function() {
+    const text = await getFormattedExportText();
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  });
+}
 
-document.getElementById('emailBtn')?.addEventListener('click', async () => {
-  const text = await getFormattedExportText();
-  const subject = `Dive Plan - ${document.getElementById('diveSite')?.value || 'Dive Plan'} - ${formatDateDisplay(currentDate)}`;
-  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-});
+const emailBtn = document.getElementById('emailBtn');
+if (emailBtn) {
+  emailBtn.addEventListener('click', async function() {
+    const text = await getFormattedExportText();
+    const diveSiteElem = document.getElementById('diveSite');
+    const subject = 'Dive Plan - ' + (diveSiteElem ? diveSiteElem.value : 'Dive Plan') + ' - ' + formatDateDisplay(currentDate);
+    window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
+  });
+}
 
-document.getElementById('copyBtn')?.addEventListener('click', async () => {
-  const text = await getFormattedExportText();
-  await navigator.clipboard.writeText(text);
-  showNotification('Plan copied to clipboard!');
-});
+const copyBtn = document.getElementById('copyBtn');
+if (copyBtn) {
+  copyBtn.addEventListener('click', async function() {
+    const text = await getFormattedExportText();
+    await navigator.clipboard.writeText(text);
+    showNotification('Plan copied to clipboard!');
+  });
+}
 
-document.getElementById('savePlanBtn')?.addEventListener('click', () => {
-  saveCurrentPlan();
-});
+const savePlanBtn = document.getElementById('savePlanBtn');
+if (savePlanBtn) {
+  savePlanBtn.addEventListener('click', function() {
+    saveCurrentPlan();
+  });
+}
 
 async function loadAllData() {
   showLoading();

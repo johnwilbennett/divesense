@@ -1,22 +1,22 @@
-// _worker.js - No date restrictions
+// _worker.js - Updated with new coordinates
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     
     const stationCoords = {
-      cobh: { lat: 51.8489, lon: -8.2995 },
-      kinsale: { lat: 51.7075, lon: -8.5225 },
-      baltimore: { lat: 51.4833, lon: -9.3667 },
-      dunmanus: { lat: 51.55, lon: -9.6833 },
-      castletownbere: { lat: 51.65, lon: -9.9167 },
-      valentia: { lat: 51.9333, lon: -10.35 },
-      dingle: { lat: 52.1333, lon: -10.2667 }
+      cobh: { lat: 51.85, lon: -8.3 },
+      kinsale: { lat: 51.7, lon: -8.517 },
+      baltimore: { lat: 51.483, lon: -9.367 },
+      dunmanus: { lat: 51.533, lon: -9.667 },
+      castletownbere: { lat: 51.65, lon: -9.9 },
+      valentia: { lat: 51.933, lon: -10.3 },
+      dingle: { lat: 52.117, lon: -10.25 }
     };
     
     if (url.pathname === '/api/tides') {
       try {
         const stationName = url.searchParams.get('station');
-        let date = url.searchParams.get('date');
+        const date = url.searchParams.get('date');
         const WT_API_KEY = env.WORLDTIDES_API_KEY;
         
         if (!WT_API_KEY) {
@@ -34,7 +34,6 @@ export default {
           });
         }
         
-        // WorldTides API can handle dates up to 10+ days ahead
         const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}`;
         
         const response = await fetch(apiUrl);
