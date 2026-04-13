@@ -547,3 +547,53 @@ input[type="radio"], input[type="checkbox"] {
   filter: invert(0.6) sepia(1) hue-rotate(150deg);
   opacity: 0.8;
 }
+/* Spinner wheel - prevents page drag on mobile */
+.spinner-wheel {
+  height: 200px;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  background: #01061a;
+  border-radius: 16px;
+  border: 1px solid #1AA7A7;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.spinner-wheel::-webkit-scrollbar {
+  width: 3px;
+}
+
+.spinner-wheel::-webkit-scrollbar-track {
+  background: #0a1a2f;
+}
+
+.spinner-wheel::-webkit-scrollbar-thumb {
+  background: #2FFFEF;
+  border-radius: 10px;
+}
+
+.spinner-option {
+  scroll-snap-align: center;
+  text-align: center;
+  padding: 14px 0;
+  font-size: 18px;
+  font-family: monospace;
+  color: #1AA7A7;
+  cursor: pointer;
+  transition: all 0.1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.spinner-option.selected {
+  color: #2FFFEF;
+  text-shadow: 0 0 8px rgba(47, 255, 238, 0.5);
+  font-weight: 600;
+  background: rgba(47, 255, 238, 0.2);
+  transform: scale(1.05);
+}
+
+.spinner-option:active {
+  background: rgba(47, 255, 238, 0.1);
+}

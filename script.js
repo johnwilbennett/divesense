@@ -156,7 +156,8 @@ function initTimeSpinners() {
     let hourHtml = '';
     for (let h = 0; h < 24; h++) {
         const hourStr = h.toString().padStart(2, '0');
-        hourHtml += '<div class="spinner-option" data-value="' + h + '">' + hourStr + '</div>';
+        const isSelected = (h === currentHour);
+        hourHtml += '<div class="spinner-option' + (isSelected ? ' selected' : '') + '" data-value="' + h + '">' + hourStr + '</div>';
     }
     hourWheel.innerHTML = hourHtml;
     
@@ -164,10 +165,12 @@ function initTimeSpinners() {
     let minuteHtml = '';
     for (let m = 0; m < 60; m++) {
         const minuteStr = m.toString().padStart(2, '0');
-        minuteHtml += '<div class="spinner-option" data-value="' + m + '">' + minuteStr + '</div>';
+        const isSelected = (m === currentMinute);
+        minuteHtml += '<div class="spinner-option' + (isSelected ? ' selected' : '') + '" data-value="' + m + '">' + minuteStr + '</div>';
     }
     minuteWheel.innerHTML = minuteHtml;
     
+    // Function to scroll to a specific value without animation
     function scrollToValue(wheelElement, targetValue) {
         const options = wheelElement.querySelectorAll('.spinner-option');
         for (let i = 0; i < options.length; i++) {
@@ -178,6 +181,7 @@ function initTimeSpinners() {
         }
     }
     
+    // Function to update highlight only
     function updateHighlightOnly() {
         const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
         for (let i = 0; i < hourOptions.length; i++) {
@@ -200,9 +204,23 @@ function initTimeSpinners() {
         updateTimeLabel();
     }
     
-    // Hour wheel scroll handler
+    // Prevent touch/mouse drag that moves the wheel position
+    function preventDragMovement(wheelElement) {
+        wheelElement.addEventListener('touchstart', function(e) {
+            // Allow scrolling but prevent page drag
+            e.stopPropagation();
+        }, { passive: false });
+        
+        wheelElement.addEventListener('mousedown', function(e) {
+            // Prevent default to avoid accidental text selection
+            e.preventDefault();
+        });
+    }
+    
+    // Hour wheel scroll handler - only updates on scroll end
     let hourScrollTimeout;
     hourWheel.addEventListener('scroll', function() {
+        // Prevent the wheel from being moved by dragging - keep it anchored
         if (hourScrollTimeout) clearTimeout(hourScrollTimeout);
         hourScrollTimeout = setTimeout(() => {
             const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
@@ -211,7 +229,11 @@ function initTimeSpinners() {
             let minDist = Infinity;
             for (let i = 0; i < options.length; i++) {
                 const opt = options[i];
-                const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
+                const rect = opt.getBoundingClientRect();
+                const wheelRect = hourWheel.getBoundingClientRect();
+                const optCenter = rect.top + rect.height / 2;
+                const wheelCenter = wheelRect.top + wheelRect.height / 2;
+                const dist = Math.abs(optCenter - wheelCenter);
                 if (dist < minDist) {
                     minDist = dist;
                     closest = opt;
@@ -225,8 +247,10 @@ function initTimeSpinners() {
                     updateDetailed();
                     updateHourly();
                 }
+                // Snap to the closest value
+                closest.scrollIntoView({ block: 'center', behavior: 'auto' });
             }
-        }, 10);
+        }, 50);
     });
     
     // Minute wheel scroll handler
@@ -240,7 +264,11 @@ function initTimeSpinners() {
             let minDist = Infinity;
             for (let i = 0; i < options.length; i++) {
                 const opt = options[i];
-                const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - center);
+                const rect = opt.getBoundingClientRect();
+                const wheelRect = minuteWheel.getBoundingClientRect();
+                const optCenter = rect.top + rect.height / 2;
+                const wheelCenter = wheelRect.top + wheelRect.height / 2;
+                const dist = Math.abs(optCenter - wheelCenter);
                 if (dist < minDist) {
                     minDist = dist;
                     closest = opt;
@@ -254,14 +282,20 @@ function initTimeSpinners() {
                     updateDetailed();
                     updateHourly();
                 }
+                // Snap to the closest value
+                closest.scrollIntoView({ block: 'center', behavior: 'auto' });
             }
-        }, 10);
+        }, 50);
     });
+    
+    // Apply drag prevention
+    preventDragMovement(hourWheel);
+    preventDragMovement(minuteWheel);
     
     // Initial highlight
     updateHighlightOnly();
     
-    // Scroll to current values with delays to ensure DOM is ready
+    // Scroll to current values
     setTimeout(() => {
         scrollToValue(hourWheel, currentHour);
         scrollToValue(minuteWheel, currentMinute);
@@ -636,8 +670,6 @@ if (datePicker) {
         currentDate = new Date(e.target.value);
         loadAllData();
     });
-    
-    // Calendar will open naturally when user clicks the date picker
 }
 
 function init() {
