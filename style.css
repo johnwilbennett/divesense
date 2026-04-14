@@ -907,3 +907,25 @@ header {
     padding: 5px 0 2px;
   }
 }
+/* Prevent any auto-scroll to spinners */
+.spinner-wheel {
+  scroll-snap-type: y mandatory;
+  outline: none;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Prevent focus from causing scroll */
+.spinner-option:focus {
+  outline: none;
+}
+
+/* Ensure the container doesn't cause scroll */
+.container {
+  scroll-margin-top: 0;
+}
+
+/* Disable smooth scroll temporarily to prevent jump */
+html {
+  scroll-behavior: auto;
+}

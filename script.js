@@ -1,3 +1,24 @@
+// IMMEDIATE SCROLL PREVENTION - Runs before anything else
+(function() {
+  // Disable browser scroll restoration
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+  
+  // Scroll to top immediately
+  window.scrollTo(0, 0);
+  
+  // Prevent any focus on spinners
+  document.addEventListener('DOMContentLoaded', function() {
+    window.scrollTo(0, 0);
+    
+    // Remove focus from any element that might cause scroll
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
+  });
+})();
+
 // STATIONS DATA with updated coordinates
 const stations = [
   { name: "Cobh", county: "Co. Cork", lat: 51.85, lon: -8.3, worldtidesId: "cobh" },
@@ -709,7 +730,6 @@ function initStations() {
     });
   }
 }
-
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
@@ -718,7 +738,7 @@ function initTimeSpinners() {
   hourWheel.innerHTML = '';
   minuteWheel.innerHTML = '';
   
-  const hourValues = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1];
+  const hourValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
   for (let h = 0; h < hourValues.length; h++) {
     const val = hourValues[h];
     const option = document.createElement('div');
@@ -728,7 +748,7 @@ function initTimeSpinners() {
     hourWheel.appendChild(option);
   }
   
-  const minuteValues = [58, 59, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 0, 1];
+  const minuteValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59];
   for (let m = 0; m < minuteValues.length; m++) {
     const val = minuteValues[m];
     const option = document.createElement('div');
@@ -770,15 +790,7 @@ function initTimeSpinners() {
     updateTimeLabel();
   }
   
-  function scrollToValue(wheel, value) {
-    const options = wheel.children;
-    for (let i = 0; i < options.length; i++) {
-      if (parseInt(options[i].dataset.value) === value) {
-        options[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
-        break;
-      }
-    }
-  }
+  // REMOVED: scrollToValue function - no auto-scrolling!
   
   let scrollTimeout;
   
@@ -847,10 +859,7 @@ function initTimeSpinners() {
   });
   
   updateHighlights();
-  setTimeout(function() {
-    scrollToValue(hourWheel, currentHour);
-    scrollToValue(minuteWheel, currentMinute);
-  }, 100);
+  // REMOVED: setTimeout scrollToValue - NO AUTO-SCROLLING!
 }
 
 function initDiveType() {
@@ -1373,7 +1382,28 @@ function init() {
   buildCalendar();
   loadAllData();
 }
-
+function init() {
+  // Force scroll to top multiple times
+  window.scrollTo(0, 0);
+  
+  loadUserPreferences();
+  loadSavedPlans();
+  initStations();
+  initTimeSpinners();  // This no longer auto-scrolls
+  initDiveType();
+  initChips();
+  buildCalendar();
+  loadAllData();
+  
+  // Force scroll to top again after all data loads
+  setTimeout(function() {
+    window.scrollTo(0, 0);
+  }, 100);
+  
+  setTimeout(function() {
+    window.scrollTo(0, 0);
+  }, 500);
+}
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
