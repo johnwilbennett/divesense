@@ -730,6 +730,7 @@ function initStations() {
     });
   }
 }
+
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
@@ -789,8 +790,6 @@ function initTimeSpinners() {
     }
     updateTimeLabel();
   }
-  
-  // REMOVED: scrollToValue function - no auto-scrolling!
   
   let scrollTimeout;
   
@@ -859,7 +858,6 @@ function initTimeSpinners() {
   });
   
   updateHighlights();
-  // REMOVED: setTimeout scrollToValue - NO AUTO-SCROLLING!
 }
 
 function initDiveType() {
@@ -943,6 +941,7 @@ async function updateHourly() {
     return;
   }
   
+  // FIXED: Correct tide direction logic
   function getTideDirectionWithFallback(tideEvents, hour) {
     if (!tideEvents || tideEvents.length === 0) return "No Data";
     
@@ -961,22 +960,48 @@ async function updateHourly() {
       }
     }
     
+    // CASE 1: Before the first tide of the day
     if (!prevTide && nextTide) {
-      return nextTide.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
+      // If first tide is HIGH → water is FLOODING (coming in)
+      // If first tide is LOW → water is EBBING (going out)
+      if (nextTide.type === "High") {
+        return "Flooding 🌊⬆️";
+      } else {
+        return "Ebbing 🌊⬇️";
+      }
     }
     
+    // CASE 2: After the last tide of the day
     if (prevTide && !nextTide) {
-      return prevTide.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
+      // If last tide is HIGH → water is EBBING (going out)
+      // If last tide is LOW → water is FLOODING (coming in)
+      if (prevTide.type === "High") {
+        return "Ebbing 🌊⬇️";
+      } else {
+        return "Flooding 🌊⬆️";
+      }
     }
     
+    // CASE 3: Between two tides
     if (prevTide && nextTide) {
-      const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-      const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+      const prevTideMinutes = parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1]);
+      const nextTideMinutes = parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1]);
+      const timeToPrev = Math.abs(targetMinutes - prevTideMinutes);
+      const timeToNext = Math.abs(targetMinutes - nextTideMinutes);
       
-      if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
+      // SLACK WATER: within 40 minutes of either tide
+      if (timeToPrev <= 40 || timeToNext <= 40) {
+        return "Slack Water ⚡";
+      }
       
-      if (prevTide.type === "High" && nextTide.type === "Low") return "Ebbing 🌊⬇️";
-      if (prevTide.type === "Low" && nextTide.type === "High") return "Flooding 🌊⬆️";
+      // Determine direction based on tide sequence
+      // High → Low = Ebbing (water going OUT)
+      // Low → High = Flooding (water coming IN)
+      if (prevTide.type === "High" && nextTide.type === "Low") {
+        return "Ebbing 🌊⬇️";
+      } else if (prevTide.type === "Low" && nextTide.type === "High") {
+        return "Flooding 🌊⬆️";
+      }
     }
     
     return "No Data";
@@ -1045,19 +1070,41 @@ async function updateDetailed() {
   
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
   
+  // FIXED: Correct tide direction logic for detailed view
   let tideDirection = "No Data";
+  
+  // CASE 1: Before first tide
   if (!prevTide && nextTide) {
-    tideDirection = nextTide.type === "High" ? "Flooding (Incoming) 🌊⬆️" : "Ebbing (Outgoing) 🌊⬇️";
-  } else if (prevTide && !nextTide) {
-    tideDirection = prevTide.type === "High" ? "Ebbing (Outgoing) 🌊⬇️" : "Flooding (Incoming) 🌊⬆️";
-  } else if (prevTide && nextTide) {
-    const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-    const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+    if (nextTide.type === "High") {
+      tideDirection = "Flooding (Incoming) 🌊⬆️";
+    } else {
+      tideDirection = "Ebbing (Outgoing) 🌊⬇️";
+    }
+  }
+  // CASE 2: After last tide
+  else if (prevTide && !nextTide) {
+    if (prevTide.type === "High") {
+      tideDirection = "Ebbing (Outgoing) 🌊⬇️";
+    } else {
+      tideDirection = "Flooding (Incoming) 🌊⬆️";
+    }
+  }
+  // CASE 3: Between tides
+  else if (prevTide && nextTide) {
+    const prevTideMinutes = parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1]);
+    const nextTideMinutes = parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1]);
+    const timeToPrev = Math.abs(targetMinutes - prevTideMinutes);
+    const timeToNext = Math.abs(targetMinutes - nextTideMinutes);
+    
+    // Slack water check
     if (timeToPrev <= 40 || timeToNext <= 40) {
       tideDirection = "Slack Water ⚡";
-    } else if (prevTide.type === "High" && nextTide.type === "Low") {
+    }
+    // Direction based on tide sequence
+    else if (prevTide.type === "High" && nextTide.type === "Low") {
       tideDirection = "Ebbing (Outgoing) 🌊⬇️";
-    } else if (prevTide.type === "Low" && nextTide.type === "High") {
+    }
+    else if (prevTide.type === "Low" && nextTide.type === "High") {
       tideDirection = "Flooding (Incoming) 🌊⬆️";
     }
   }
@@ -1336,33 +1383,25 @@ async function loadAllData() {
   }
 }
 
-// Force page to scroll to top on load - MULTIPLE METHODS
+// Force page to scroll to top on load
 function scrollToTopOnLoad() {
-  // Method 1: Immediate scroll
   window.scrollTo(0, 0);
-  
-  // Method 2: Scroll after a tiny delay
   setTimeout(function() {
     window.scrollTo(0, 0);
   }, 0);
-  
-  // Method 3: Scroll after DOM is fully ready
   setTimeout(function() {
     window.scrollTo(0, 0);
   }, 50);
-  
-  // Method 4: Scroll after all images and content load
   window.addEventListener('load', function() {
     window.scrollTo(0, 0);
   });
 }
 
-// Also prevent any scroll restoration
+// Prevent any scroll restoration
 if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// In your init function, call this FIRST
 function init() {
   // Disable scroll restoration
   if ('scrollRestoration' in history) {
@@ -1372,24 +1411,10 @@ function init() {
   // Force scroll to top
   scrollToTopOnLoad();
   
-  // Then your existing init code
   loadUserPreferences();
   loadSavedPlans();
   initStations();
   initTimeSpinners();
-  initDiveType();
-  initChips();
-  buildCalendar();
-  loadAllData();
-}
-function init() {
-  // Force scroll to top multiple times
-  window.scrollTo(0, 0);
-  
-  loadUserPreferences();
-  loadSavedPlans();
-  initStations();
-  initTimeSpinners();  // This no longer auto-scrolls
   initDiveType();
   initChips();
   buildCalendar();
@@ -1399,11 +1424,11 @@ function init() {
   setTimeout(function() {
     window.scrollTo(0, 0);
   }, 100);
-  
   setTimeout(function() {
     window.scrollTo(0, 0);
   }, 500);
 }
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
