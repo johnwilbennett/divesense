@@ -736,15 +736,23 @@ input[type="checkbox"] {
 }
 
 .header-title-section .neon-title {
-  font-size: 28px;
+  font-size: 14px;  /* Reduced by 50% from 28px */
   margin: 0;
-  text-shadow: 0 0 20px rgba(47, 255, 238, 0.3);
-  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(47, 255, 238, 0.3);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Style for the second part of the title */
+.header-title-section .neon-title .subtitle-part {
+  font-style: italic;
+  font-weight: normal;
+  opacity: 0.9;
 }
 
 /* Mobile responsive */
 @media (max-width: 600px) {
   .header-title-section .neon-title {
-    font-size: 18px;
+    font-size: 12px;
   }
 }
