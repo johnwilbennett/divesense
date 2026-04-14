@@ -1358,10 +1358,21 @@ if (whatsappBtn) {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     if (isIOS) {
-      // iOS: Use location.href with a slight delay (user gesture preserved)
-      setTimeout(() => {
-        window.location.href = `https://wa.me/?text=${encodedText}`;
-      }, 50);
+      // For iOS: Copy to clipboard first, then show instructions
+      await navigator.clipboard.writeText(text);
+      
+      // Show custom alert with instructions
+      const userConfirmed = confirm(
+        "✅ Dive plan copied to clipboard!\n\n" +
+        "Tap 'OK' to open WhatsApp, then paste the message."
+      );
+      
+      if (userConfirmed) {
+        // Use setTimeout to ensure the clipboard operation completes
+        setTimeout(() => {
+          window.location.href = `https://wa.me/`;
+        }, 100);
+      }
     } else {
       window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     }
