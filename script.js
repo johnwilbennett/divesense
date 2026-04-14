@@ -1351,6 +1351,7 @@ if (maxDepthInput) {
 const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
   whatsappBtn.addEventListener('click', async function(e) {
+    // Prevent default to avoid any conflicts
     e.preventDefault();
     
     const text = await getFormattedExportText();
@@ -1358,11 +1359,16 @@ if (whatsappBtn) {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     if (isIOS) {
-      // iOS: Use location.href with a slight delay (user gesture preserved)
-      setTimeout(() => {
-        window.location.href = `https://wa.me/?text=${encodedText}`;
-      }, 50);
+      // For iOS: Create a temporary link and trigger click (bypasses async restrictions)
+      const tempLink = document.createElement('a');
+      tempLink.href = `https://wa.me/?text=${encodedText}`;
+      tempLink.target = '_blank';
+      tempLink.rel = 'noopener noreferrer';
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      document.body.removeChild(tempLink);
     } else {
+      // For Android/Desktop: Use window.open
       window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     }
   });
