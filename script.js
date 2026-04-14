@@ -1327,21 +1327,43 @@ async function loadAllData() {
   }
 }
 
-// Force page to scroll to top on load
+// Force page to scroll to top on load - MULTIPLE METHODS
 function scrollToTopOnLoad() {
-  // Immediate scroll to top
+  // Method 1: Immediate scroll
   window.scrollTo(0, 0);
   
-  // Also scroll after a tiny delay to ensure DOM is fully loaded
+  // Method 2: Scroll after a tiny delay
   setTimeout(function() {
     window.scrollTo(0, 0);
-  }, 10);
+  }, 0);
+  
+  // Method 3: Scroll after DOM is fully ready
+  setTimeout(function() {
+    window.scrollTo(0, 0);
+  }, 50);
+  
+  // Method 4: Scroll after all images and content load
+  window.addEventListener('load', function() {
+    window.scrollTo(0, 0);
+  });
 }
 
-// Call this in the init function
-// Add this line at the beginning of your init() function:
+// Also prevent any scroll restoration
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
+// In your init function, call this FIRST
 function init() {
-  scrollToTopOnLoad();  // ← ADD THIS LINE FIRST
+  // Disable scroll restoration
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+  
+  // Force scroll to top
+  scrollToTopOnLoad();
+  
+  // Then your existing init code
   loadUserPreferences();
   loadSavedPlans();
   initStations();

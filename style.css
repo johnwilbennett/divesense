@@ -767,24 +767,26 @@ input[type="checkbox"] {
 /* Title section below image */
 .header-title-section {
   text-align: center;
-  margin-top: 4px;  /* Reduced margin */
-  margin-bottom: 12px;  /* Reduced margin to close gap */
+  margin-top: 4px;
+  margin-bottom: 8px;  /* Reduced further */
 }
 
 .header-title-section .neon-title {
   font-size: 14px;
   margin: 0;
-  text-shadow: 0 0 10px rgba(47, 255, 238, 0.3);
+  text-shadow: none;  /* REMOVED - was causing blur */
   letter-spacing: 0.5px;
   font-weight: 600;
+  color: #2FFFEF;  /* Added explicit color */
 }
 
-/* Style for the second part of the title - 25% smaller and italic */
+/* Style for the second part of the title */
 .header-title-section .neon-title .subtitle-part {
   font-style: italic;
   font-weight: normal;
-  opacity: 0.9;
-  font-size: 10.5px;  /* 25% smaller than 14px (14 * 0.75 = 10.5) */
+  font-size: 10.5px;
+  color: #00FFAA;  /* Slightly different color for distinction */
+  text-shadow: none;  /* Ensure no blur */
 }
 
 /* Mobile responsive */
@@ -793,24 +795,115 @@ input[type="checkbox"] {
     font-size: 12px;
   }
   .header-title-section .neon-title .subtitle-part {
-    font-size: 9px;  /* 25% smaller than 12px */
+    font-size: 9px;
   }
 }
-/* Ensure page loads at the very top */
-html {
-  scroll-behavior: smooth;
+/* First card after header - reduce top margin */
+.card:first-of-type {
+  margin-top: 0;
 }
 
-body {
-  scroll-margin-top: 0;
+/* Or specifically target the Station card */
+.card:first-child {
+  margin-top: 0;
 }
-/* Prevent any initial scroll anchoring */
-:root {
-  scroll-padding-top: 0;
+header {
+  text-align: center;
+  padding: 10px 0 5px;  /* Reduced from 22px 0 20px */
+  margin-bottom: 5px;    /* Reduced from 22px */
+}
+/* Prevent any anchor/scroll behavior */
+html, body {
+  overflow-x: hidden;
+  scroll-behavior: auto !important;  /* Override smooth scroll */
 }
 
-/* Ensure the spinner doesn't cause auto-focus */
+/* Ensure spinner doesn't cause focus/scroll */
 .spinner-wheel {
   scroll-snap-type: y mandatory;
-  /* Remove any auto-focus behavior */
+  outline: none;
+}
+/* Header section - reduced spacing */
+header {
+  text-align: center;
+  padding: 10px 0 5px;
+  margin-bottom: 5px;
+}
+
+/* Header Image */
+.header-image-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: #020B24;
+}
+
+.header-bg-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  opacity: 0.78;
+}
+
+.header-image-wrapper:hover .header-bg-image {
+  transform: scale(1.02);
+  transition: transform 0.5s ease;
+}
+
+.header-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, 
+    rgba(2, 11, 36, 0.3) 0%,
+    rgba(2, 11, 36, 0.15) 50%,
+    rgba(47, 255, 238, 0.05) 100%);
+  pointer-events: none;
+}
+
+/* Title section below image - tight spacing */
+.header-title-section {
+  text-align: center;
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
+.header-title-section .neon-title {
+  font-size: 14px;
+  margin: 0;
+  text-shadow: none;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: #2FFFEF;
+}
+
+.header-title-section .neon-title .subtitle-part {
+  font-style: italic;
+  font-weight: normal;
+  font-size: 10.5px;
+  color: #00FFAA;
+  text-shadow: none;
+}
+
+/* Reduce gap to first card */
+.card:first-of-type {
+  margin-top: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .header-title-section .neon-title {
+    font-size: 12px;
+  }
+  .header-title-section .neon-title .subtitle-part {
+    font-size: 9px;
+  }
+  header {
+    padding: 5px 0 2px;
+  }
 }
