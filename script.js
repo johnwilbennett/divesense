@@ -99,15 +99,15 @@ function getMoonPhase(date) {
   const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
   const phase = (diffDays % lunarCycle) / lunarCycle;
   
-  if (phase < 0.0625) return "New Moon 🌑";
-  if (phase < 0.1875) return "Waxing Crescent 🌒";
-  if (phase < 0.3125) return "First Quarter 🌓";
-  if (phase < 0.4375) return "Waxing Gibbous 🌔";
-  if (phase < 0.5625) return "Full Moon 🌕";
-  if (phase < 0.6875) return "Waning Gibbous 🌖";
-  if (phase < 0.8125) return "Last Quarter 🌗";
-  if (phase < 0.9375) return "Waning Crescent 🌘";
-  return "New Moon 🌑";
+  if (phase < 0.0625) return "New Moon";
+  if (phase < 0.1875) return "Waxing Crescent";
+  if (phase < 0.3125) return "First Quarter";
+  if (phase < 0.4375) return "Waxing Gibbous";
+  if (phase < 0.5625) return "Full Moon";
+  if (phase < 0.6875) return "Waning Gibbous";
+  if (phase < 0.8125) return "Last Quarter";
+  if (phase < 0.9375) return "Waning Crescent";
+  return "New Moon";
 }
 
 // Calculate Spring/Neap from moon phase
@@ -494,7 +494,7 @@ async function getFormattedExportText() {
   
   let weatherText = '';
   if (hourWeather && !hourWeather.error) {
-    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + degreesToDirection(hourWeather.windDir) + " " + windArrow + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourWeather.swellHeight.toFixed(1) + "m / " + hourWeather.swellPeriod + "s from " + degreesToDirection(hourWeather.swellDir) + " " + swellArrow + ", Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
+    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourWeather.swellHeight.toFixed(1) + "m / " + hourWeather.swellPeriod + "s " + hourWeather.swellDir + "° " + degreesToDirection(hourWeather.swellDir) + " " + swellArrow + ", Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
   } else {
     weatherText = 'Weather data unavailable';
   }
@@ -816,6 +816,7 @@ async function updateTides() {
     html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
   }
   
+  // Single LAT footnote
   html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
   html += '📐 Heights relative to LAT (Lowest Astronomical Tide) - the lowest predicted tide level over a full nodal cycle';
   html += '</div>';
@@ -894,9 +895,8 @@ async function updateHourly() {
     
     html += '<div class="hourly-card ' + highlightClass + '">';
     html += '<strong>' + hour.time + '</strong>';
-    html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft ' + windArrow + '</div>';
-    html += '<div>' + degreesToDirection(hour.windDir) + '</div>';
-    html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm / ' + hour.swellPeriod + 's ' + swellArrow + '</div>';
+    html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft ' + hour.windDir + '° ' + degreesToDirection(hour.windDir) + ' ' + windArrow + '</div>';
+    html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm / ' + hour.swellPeriod + 's ' + hour.swellDir + '° ' + degreesToDirection(hour.swellDir) + ' ' + swellArrow + '</div>';
     html += '<div style="font-size: 10px; margin-top: 4px;">' + tideIcon + ' ' + tideDirection + '</div>';
     html += '</div>';
   }
@@ -951,15 +951,16 @@ async function updateDetailed() {
   const windArrow = getWindArrow(hourData.windDir);
   const swellArrow = getSwellArrow(hourData.swellDir);
   
+  // Reordered: Wind, Swell, Rain, Visibility, Cloud Cover, Air Temp, UV Index
   let html = '';
   if (hourData && !hourData.error) {
-    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourData.windSpeed + ' Bft ' + degreesToDirection(hourData.windDir) + ' ' + windArrow + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
-    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
+    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourData.windSpeed + ' Bft ' + hourData.windDir + '° ' + degreesToDirection(hourData.windDir) + ' ' + windArrow + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
+    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm / ' + hourData.swellPeriod + 's ' + hourData.swellDir + '° ' + degreesToDirection(hourData.swellDir) + ' ' + swellArrow + '</div>';
     html += '<div class="detail-row"><strong>Rain:</strong> ' + hourData.rain.toFixed(1) + ' mm</div>';
+    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
     html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourData.cloudCover + '%</div>';
     html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourData.airTemp.toFixed(1) + '°C</div>';
     html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourData.uvIndex + '</div>';
-    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm / ' + hourData.swellPeriod + 's from ' + degreesToDirection(hourData.swellDir) + ' ' + swellArrow + '</div>';
   } else {
     html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   }
@@ -982,7 +983,7 @@ async function updateDetailed() {
     if (tides.tideType !== 'Unknown') {
       html += '<div class="detail-row">' + (tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)') + '</div>';
     }
-    html += '<div class="detail-row">🌙 ' + tides.moonPhase + '</div>';
+    html += '<div class="detail-row">' + tides.moonPhase + '</div>';
   } else if (tides.events.length === 0) {
     html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
   }
