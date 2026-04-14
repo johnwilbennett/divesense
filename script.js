@@ -1327,7 +1327,21 @@ async function loadAllData() {
   }
 }
 
+// Force page to scroll to top on load
+function scrollToTopOnLoad() {
+  // Immediate scroll to top
+  window.scrollTo(0, 0);
+  
+  // Also scroll after a tiny delay to ensure DOM is fully loaded
+  setTimeout(function() {
+    window.scrollTo(0, 0);
+  }, 10);
+}
+
+// Call this in the init function
+// Add this line at the beginning of your init() function:
 function init() {
+  scrollToTopOnLoad();  // ← ADD THIS LINE FIRST
   loadUserPreferences();
   loadSavedPlans();
   initStations();
