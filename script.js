@@ -1352,43 +1352,8 @@ const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
   whatsappBtn.addEventListener('click', async function() {
     const text = await getFormattedExportText();
-    const encodedText = encodeURIComponent(text);
-    
-    // Detect iPhone/iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    if (isIOS) {
-      // For iOS: Use a different approach - create a temporary link with user gesture
-      // This bypasses the "trying to open another application" error
-      const whatsappURL = `https://wa.me/?text=${encodedText}`;
-      
-      // Create a temporary anchor element
-      const tempLink = document.createElement('a');
-      tempLink.href = whatsappURL;
-      tempLink.target = '_blank';
-      tempLink.rel = 'noopener noreferrer';
-      
-      // Add a small delay to ensure user gesture is registered
-      setTimeout(() => {
-        tempLink.click();
-      }, 100);
-      
-      // Also try the app scheme as backup (may still show warning but works)
-      setTimeout(() => {
-        window.location.href = `whatsapp://send?text=${encodedText}`;
-      }, 500);
-      
-    } else if (isMobile) {
-      // Android: Try app first, then web fallback
-      window.location.href = `whatsapp://send?text=${encodedText}`;
-      setTimeout(function() {
-        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
-      }, 800);
-    } else {
-      // Desktop: Use web WhatsApp
-      window.open(`https://web.whatsapp.com/send?text=${encodedText}`, '_blank');
-    }
+    // Simple URL that works across all platforms
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
   });
 }
 
