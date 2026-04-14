@@ -67,6 +67,15 @@ function formatDateDisplay(date) {
   return date.getDate().toString().padStart(2, '0') + "-" + (date.getMonth() + 1).toString().padStart(2, '0') + "-" + date.getFullYear();
 }
 
+// Add this helper function at the top of your file
+function formatForMobile(text) {
+  // Reduce line length for mobile
+  return text.replace(/\n\n/g, '\n').substring(0, 2000); // WhatsApp has character limit
+}
+
+// Then in the WhatsApp button, use:
+const text = formatForMobile(await getFormattedExportText());
+
 // Check if Ireland is in Daylight Savings Time (GMT+1)
 function isDaylightSavingsTime(date) {
   const year = date.getFullYear();
@@ -1344,23 +1353,22 @@ if (whatsappBtn) {
   whatsappBtn.addEventListener('click', async function() {
     const text = await getFormattedExportText();
     const encodedText = encodeURIComponent(text);
+    const phoneNumber = ''; // Leave empty for user to select contact
     
-    // Detect if on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Try multiple methods for better compatibility
+    const whatsappUrls = [
+      'whatsapp://send?text=' + encodedText,  // iOS/Android app
+      'https://wa.me/?text=' + encodedText,    // Universal web fallback
+      'https://api.whatsapp.com/send?text=' + encodedText  // Another web method
+    ];
     
-    if (isMobile) {
-      // For mobile: Try to use the WhatsApp app directly
-      // Method 1: whatsapp:// scheme (opens app)
-      window.location.href = 'whatsapp://send?text=' + encodedText;
-      
-      // Fallback: If app doesn't open, try web after 2 seconds
-      setTimeout(function() {
-        window.open('https://wa.me/?text=' + encodedText, '_blank');
-      }, 500);
-    } else {
-      // For desktop: Use web WhatsApp
-      window.open('https://web.whatsapp.com/send?text=' + encodedText, '_blank');
-    }
+    // Try the first method
+    window.location.href = whatsappUrls[0];
+    
+    // Fallback to web if app doesn't respond
+    setTimeout(function() {
+      window.open(whatsappUrls[1], '_blank');
+    }, 800);
   });
 }
 
