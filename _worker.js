@@ -13,18 +13,15 @@ export default {
       dingle: { lat: 52.117, lon: -10.25 }
     };
     
-    // Handle API requests
     if (url.pathname === '/api/tides') {
       try {
         const stationName = url.searchParams.get('station');
         const date = url.searchParams.get('date');
         const WT_API_KEY = env.WORLDTIDES_API_KEY;
         
-        // Check if API key exists
         if (!WT_API_KEY) {
           return new Response(JSON.stringify({ 
-            error: 'API key not configured',
-            message: 'Please set WORLDTIDES_API_KEY in environment variables'
+            error: 'API key not configured'
           }), {
             status: 500,
             headers: { 
@@ -34,35 +31,23 @@ export default {
           });
         }
         
-        // Get coordinates for the station
         const coords = stationCoords[stationName.toLowerCase()];
         if (!coords) {
-          return new Response(JSON.stringify({ 
-            error: 'Unknown station',
-            message: `Station "${stationName}" not found`
-          }), {
+          return new Response(JSON.stringify({ error: 'Unknown station' }), {
             status: 400,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
+            headers: { 'Content-Type': 'application/json' }
           });
         }
         
-        // Build WorldTides API URL with:
-        // - extremes: Get high/low tide times
-        // - height: Get tide heights
-        // - datum=LAT: Lowest Astronomical Tide (conservative for diving)
-        // - timezone=UTC: Get UTC times (we'll convert to local)
-        // - spring: Get Spring/Neap tide prediction
-        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&datum=LAT&timezone=UTC&spring`;
+        // Try v2 API which has better Spring/Neap support
+        const apiUrlV2 = `https://www.worldtides.info/api?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&datum=LAT&spring`;
         
-        console.log(`Fetching tides for ${stationName} on ${date}`);
+        console.log(`Fetching tides for ${stationName} on ${date} using v2 API`);
         
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrlV2);
         
         if (!response.ok) {
-          throw new Error(`WorldTides API returned ${response.status}: ${response.statusText}`);
+          throw new Error(`WorldTides API returned ${response.status}`);
         }
         
         const data = await response.json();
@@ -70,16 +55,16 @@ export default {
         // Log Spring/Neap data if available
         if (data.spring !== undefined) {
           console.log(`Spring/Neap detection: spring=${data.spring} (${data.spring === 1 ? 'Springs' : 'Neaps'})`);
+        } else {
+          console.log(`No spring data in response, will calculate from tidal range`);
         }
         
-        // Return the data with cache headers (6-hour cache)
         return new Response(JSON.stringify(data), {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=21600',
-            'CDN-Cache-Control': 'public, max-age=21600'
+            'Cache-Control': 'public, max-age=21600'
           }
         });
         
@@ -99,7 +84,6 @@ export default {
       }
     }
     
-    // For all other requests (HTML, CSS, JS files), serve your static website
     return env.ASSETS.fetch(request);
   }
 };

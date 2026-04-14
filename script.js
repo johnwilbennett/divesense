@@ -297,26 +297,30 @@ async function fetchRealTideData(station, date) {
       return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide predictions available for this date" };
     }
     
-    // FIXED: Create UTC date boundaries correctly
-    // Get the year, month, day from the selected date
+    // Use WorldTides spring/neap data if available
+    let tideType = "Unknown";
+    if (data.spring !== undefined) {
+      // WorldTides returns spring=1 for Spring tides, spring=0 for Neaps
+      tideType = data.spring === 1 ? "Springs" : "Neaps";
+      console.log(`WorldTides spring/neap data: ${tideType} (spring=${data.spring})`);
+    } else {
+      // Fallback to calculation if spring data not available
+      console.log("No spring/neap data from API, using calculation fallback");
+      tideType = calculateTideTypeFromEvents(data.extremes);
+    }
+    
     const selectedYear = date.getFullYear();
     const selectedMonth = date.getMonth();
     const selectedDay = date.getDate();
     
-    // Create UTC start of day (00:00:00 UTC)
     const selectedDateStart = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 0, 0, 0));
-    // Create UTC end of day (23:59:59 UTC)
     const selectedDateEnd = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 23, 59, 59));
-    
-    console.log(`Filtering tides for date: ${selectedYear}-${selectedMonth+1}-${selectedDay}`);
-    console.log(`UTC range: ${selectedDateStart.toISOString()} to ${selectedDateEnd.toISOString()}`);
     
     let tideEvents = [];
     for (let i = 0; i < data.extremes.length; i++) {
       const extreme = data.extremes[i];
       const tideDateUTC = new Date(extreme.dt * 1000);
       
-      // Check if tide falls on the selected date in UTC
       if (tideDateUTC >= selectedDateStart && tideDateUTC <= selectedDateEnd) {
         const utcHour = tideDateUTC.getUTCHours();
         const utcMinute = tideDateUTC.getUTCMinutes();
@@ -332,31 +336,14 @@ async function fetchRealTideData(station, date) {
       }
     }
     
-    console.log(`Kept ${tideEvents.length} of ${data.extremes.length} tides for this date`);
-    
-    if (tideEvents.length === 0) {
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide data for selected date" };
-    }
-    
     tideEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
-    
-    function getTideType(events) {
-      if (!events || events.length < 4) return "Unknown";
-      let totalRange = 0;
-      for (let i = 0; i < events.length - 1; i++) {
-        if (events[i].type !== events[i+1].type) {
-          totalRange += Math.abs(events[i].height - events[i+1].height);
-        }
-      }
-      const avgRange = totalRange / (events.length - 1);
-      return avgRange > 2.5 ? "Springs" : "Neaps";
-    }
     
     const tideData = {
       events: tideEvents,
       moonPhase: getMoonPhase(date),
-      tideType: getTideType(tideEvents),
-      timezone: getIrishTimezone()
+      tideType: tideType,
+      timezone: getIrishTimezone(),
+      rawSpring: data.spring
     };
     
     tideCache.set(cacheKey, { data: tideData, timestamp: now });
@@ -372,6 +359,31 @@ async function fetchRealTideData(station, date) {
       errorMessage: error.message 
     };
   }
+}
+
+// Fallback calculation function
+function calculateTideTypeFromEvents(events) {
+  if (!events || events.length < 4) return "Unknown";
+  
+  // Get heights for high and low tides separately
+  const highTides = events.filter(e => e.type === "High").map(e => e.height);
+  const lowTides = events.filter(e => e.type === "Low").map(e => e.height);
+  
+  if (highTides.length < 2 || lowTides.length < 2) return "Unknown";
+  
+  const avgHigh = highTides.reduce((a, b) => a + b, 0) / highTides.length;
+  const avgLow = lowTides.reduce((a, b) => a + b, 0) / lowTides.length;
+  const avgRange = avgHigh - avgLow;
+  
+  console.log(`Calculated avg range: ${avgRange.toFixed(2)}m`);
+  
+  // Spring tides have larger ranges (typically > 3m), Neaps smaller (< 2.5m)
+  if (avgRange > 3.0) return "Springs";
+  if (avgRange < 2.2) return "Neaps";
+  
+  // If in between, check the pattern - Springs happen twice a month
+  // For simplicity, use 2.6m as threshold
+  return avgRange > 2.6 ? "Springs" : "Neaps";
 }
 
 async function fetchRealWeather(station, date) {
