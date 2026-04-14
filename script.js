@@ -908,7 +908,7 @@ async function updateTides() {
   // Add LAT explanation
   html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
   html += '</div>';
-  html += '<div class="text-small mt-2">🌙 ' + tides.moonPhase + '</div>';
+  html += '<div class="text-small mt-2"> ' + tides.moonPhase + '</div>';
   
   const tideDiv = document.getElementById('tideData');
   if (tideDiv) tideDiv.innerHTML = html;
@@ -1132,7 +1132,7 @@ async function updateDetailed() {
     if (tides.tideType !== 'Unknown') {
       html += '<div class="detail-row">' + (tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)') + '</div>';
     }
-    html += '<div class="detail-row">🌙 ' + tides.moonPhase + '</div>';
+    html += '<div class="detail-row">' + tides.moonPhase + '</div>';
   } else if (tides.events.length === 0) {
     html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
   }
