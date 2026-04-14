@@ -739,7 +739,9 @@ function initTimeSpinners() {
   hourWheel.innerHTML = '';
   minuteWheel.innerHTML = '';
   
-  const hourValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+  // HOURS: Extended values to allow scrolling to 00, 01, 22, 23
+  // Added 22,23 at the beginning and 0,1 at the end for smooth scrolling
+  const hourValues = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1];
   for (let h = 0; h < hourValues.length; h++) {
     const val = hourValues[h];
     const option = document.createElement('div');
@@ -749,7 +751,9 @@ function initTimeSpinners() {
     hourWheel.appendChild(option);
   }
   
-  const minuteValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59];
+  // MINUTES: Extended values to allow scrolling to 00, 01, 58, 59
+  // Added 58,59 at the beginning and 0,1 at the end for smooth scrolling
+  const minuteValues = [58, 59, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 0, 1];
   for (let m = 0; m < minuteValues.length; m++) {
     const val = minuteValues[m];
     const option = document.createElement('div');
