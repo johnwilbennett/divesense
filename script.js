@@ -67,15 +67,6 @@ function formatDateDisplay(date) {
   return date.getDate().toString().padStart(2, '0') + "-" + (date.getMonth() + 1).toString().padStart(2, '0') + "-" + date.getFullYear();
 }
 
-// Add this helper function at the top of your file
-function formatForMobile(text) {
-  // Reduce line length for mobile
-  return text.replace(/\n\n/g, '\n').substring(0, 2000); // WhatsApp has character limit
-}
-
-// Then in the WhatsApp button, use:
-const text = formatForMobile(await getFormattedExportText());
-
 // Check if Ireland is in Daylight Savings Time (GMT+1)
 function isDaylightSavingsTime(date) {
   const year = date.getFullYear();
@@ -331,9 +322,7 @@ async function fetchRealTideData(station, date) {
     }
     
     // If no tides found for the selected date, try to get data from the API response
-    // WorldTides sometimes returns tides for the next day in UTC
     if (tideEvents.length === 0 && data.extremes && data.extremes.length > 0) {
-      // Get the first tide of the day in local time
       for (let i = 0; i < data.extremes.length; i++) {
         const extreme = data.extremes[i];
         const tideDateUTC = new Date(extreme.dt * 1000);
@@ -341,7 +330,6 @@ async function fetchRealTideData(station, date) {
         const utcMinute = tideDateUTC.getUTCMinutes();
         const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
         
-        // Check if the local time falls on the selected date
         const localDate = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, localTime.hour, localTime.minute, 0));
         if (localDate.getUTCFullYear() === selectedYear && 
             localDate.getUTCMonth() === selectedMonth && 
@@ -481,7 +469,6 @@ async function fetchRealSwellData(station, date) {
     
   } catch (error) {
     console.error("Error fetching swell data:", error);
-    // Fallback to estimated swell from wind
     const fallback = [];
     for (let hour = 0; hour < 24; hour++) {
       fallback.push({
@@ -740,6 +727,7 @@ function initStations() {
   }
 }
 
+// FIXED: Extended spinner values for smooth scrolling to edge values
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
@@ -749,7 +737,6 @@ function initTimeSpinners() {
   minuteWheel.innerHTML = '';
   
   // HOURS: Extended values to allow scrolling to 00, 01, 22, 23
-  // Added 22,23 at the beginning and 0,1 at the end for smooth scrolling
   const hourValues = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1];
   for (let h = 0; h < hourValues.length; h++) {
     const val = hourValues[h];
@@ -761,7 +748,6 @@ function initTimeSpinners() {
   }
   
   // MINUTES: Extended values to allow scrolling to 00, 01, 58, 59
-  // Added 58,59 at the beginning and 0,1 at the end for smooth scrolling
   const minuteValues = [58, 59, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 0, 1];
   for (let m = 0; m < minuteValues.length; m++) {
     const val = minuteValues[m];
@@ -931,7 +917,6 @@ async function updateTides() {
     html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
   }
   
-  // Single LAT footnote
   html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
   html += '📐 Heights relative to LAT (Lowest Astronomical Tide) - the lowest predicted tide level over a full nodal cycle';
   html += '</div>';
@@ -954,7 +939,6 @@ async function updateHourly() {
     return;
   }
   
-  // FIXED: Correct tide direction logic
   function getTideDirectionWithFallback(tideEvents, hour) {
     if (!tideEvents || tideEvents.length === 0) return "No Data";
     
@@ -973,48 +957,22 @@ async function updateHourly() {
       }
     }
     
-    // CASE 1: Before the first tide of the day
     if (!prevTide && nextTide) {
-      // If first tide is HIGH → water is FLOODING (coming in)
-      // If first tide is LOW → water is EBBING (going out)
-      if (nextTide.type === "High") {
-        return "Flooding 🌊⬆️";
-      } else {
-        return "Ebbing 🌊⬇️";
-      }
+      return nextTide.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
     }
     
-    // CASE 2: After the last tide of the day
     if (prevTide && !nextTide) {
-      // If last tide is HIGH → water is EBBING (going out)
-      // If last tide is LOW → water is FLOODING (coming in)
-      if (prevTide.type === "High") {
-        return "Ebbing 🌊⬇️";
-      } else {
-        return "Flooding 🌊⬆️";
-      }
+      return prevTide.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
     }
     
-    // CASE 3: Between two tides
     if (prevTide && nextTide) {
-      const prevTideMinutes = parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1]);
-      const nextTideMinutes = parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1]);
-      const timeToPrev = Math.abs(targetMinutes - prevTideMinutes);
-      const timeToNext = Math.abs(targetMinutes - nextTideMinutes);
+      const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
+      const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
       
-      // SLACK WATER: within 40 minutes of either tide
-      if (timeToPrev <= 40 || timeToNext <= 40) {
-        return "Slack Water ⚡";
-      }
+      if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
       
-      // Determine direction based on tide sequence
-      // High → Low = Ebbing (water going OUT)
-      // Low → High = Flooding (water coming IN)
-      if (prevTide.type === "High" && nextTide.type === "Low") {
-        return "Ebbing 🌊⬇️";
-      } else if (prevTide.type === "Low" && nextTide.type === "High") {
-        return "Flooding 🌊⬆️";
-      }
+      if (prevTide.type === "High" && nextTide.type === "Low") return "Ebbing 🌊⬇️";
+      if (prevTide.type === "Low" && nextTide.type === "High") return "Flooding 🌊⬆️";
     }
     
     return "No Data";
@@ -1083,41 +1041,19 @@ async function updateDetailed() {
   
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
   
-  // FIXED: Correct tide direction logic for detailed view
   let tideDirection = "No Data";
-  
-  // CASE 1: Before first tide
   if (!prevTide && nextTide) {
-    if (nextTide.type === "High") {
-      tideDirection = "Flooding (Incoming) 🌊⬆️";
-    } else {
-      tideDirection = "Ebbing (Outgoing) 🌊⬇️";
-    }
-  }
-  // CASE 2: After last tide
-  else if (prevTide && !nextTide) {
-    if (prevTide.type === "High") {
-      tideDirection = "Ebbing (Outgoing) 🌊⬇️";
-    } else {
-      tideDirection = "Flooding (Incoming) 🌊⬆️";
-    }
-  }
-  // CASE 3: Between tides
-  else if (prevTide && nextTide) {
-    const prevTideMinutes = parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1]);
-    const nextTideMinutes = parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1]);
-    const timeToPrev = Math.abs(targetMinutes - prevTideMinutes);
-    const timeToNext = Math.abs(targetMinutes - nextTideMinutes);
-    
-    // Slack water check
+    tideDirection = nextTide.type === "High" ? "Flooding (Incoming) 🌊⬆️" : "Ebbing (Outgoing) 🌊⬇️";
+  } else if (prevTide && !nextTide) {
+    tideDirection = prevTide.type === "High" ? "Ebbing (Outgoing) 🌊⬇️" : "Flooding (Incoming) 🌊⬆️";
+  } else if (prevTide && nextTide) {
+    const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
+    const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
     if (timeToPrev <= 40 || timeToNext <= 40) {
       tideDirection = "Slack Water ⚡";
-    }
-    // Direction based on tide sequence
-    else if (prevTide.type === "High" && nextTide.type === "Low") {
+    } else if (prevTide.type === "High" && nextTide.type === "Low") {
       tideDirection = "Ebbing (Outgoing) 🌊⬇️";
-    }
-    else if (prevTide.type === "Low" && nextTide.type === "High") {
+    } else if (prevTide.type === "Low" && nextTide.type === "High") {
       tideDirection = "Flooding (Incoming) 🌊⬆️";
     }
   }
@@ -1126,7 +1062,6 @@ async function updateDetailed() {
   const windArrow = getWindArrow(hourWeather.windDir);
   const swellArrow = getSwellArrow(hourSwell.swellDir);
   
-  // Reordered: Wind, Swell, Rain, Visibility, Cloud Cover, Air Temp, UV Index
   let html = '';
   if (hourWeather && !hourWeather.error) {
     html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourWeather.windSpeed + ' Bft ' + hourWeather.windDir + '° ' + degreesToDirection(hourWeather.windDir) + ' ' + windArrow + ' (Gusts ' + hourWeather.gusts + ' Bft)</div>';
@@ -1350,27 +1285,9 @@ if (maxDepthInput) {
 
 const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
-  whatsappBtn.addEventListener('click', async function(e) {
-    // Prevent default to avoid any conflicts
-    e.preventDefault();
-    
+  whatsappBtn.addEventListener('click', async function() {
     const text = await getFormattedExportText();
-    const encodedText = encodeURIComponent(text);
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
-    if (isIOS) {
-      // For iOS: Create a temporary link and trigger click (bypasses async restrictions)
-      const tempLink = document.createElement('a');
-      tempLink.href = `https://wa.me/?text=${encodedText}`;
-      tempLink.target = '_blank';
-      tempLink.rel = 'noopener noreferrer';
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
-    } else {
-      // For Android/Desktop: Use window.open
-      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
-    }
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
   });
 }
 
@@ -1433,6 +1350,7 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
+// SINGLE init() function - FIXED (removed duplicate)
 function init() {
   // Disable scroll restoration
   if ('scrollRestoration' in history) {
@@ -1440,7 +1358,7 @@ function init() {
   }
   
   // Force scroll to top
-  scrollToTopOnLoad();
+  window.scrollTo(0, 0);
   
   loadUserPreferences();
   loadSavedPlans();
@@ -1455,6 +1373,7 @@ function init() {
   setTimeout(function() {
     window.scrollTo(0, 0);
   }, 100);
+  
   setTimeout(function() {
     window.scrollTo(0, 0);
   }, 500);
@@ -1464,4 +1383,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
-}// Force redeploy
+}
