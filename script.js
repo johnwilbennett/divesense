@@ -12,7 +12,6 @@ const stations = [
 let currentStation = stations[1];
 let currentDate = new Date();
 let selectedChips = new Set();
-let currentRisk = "Moderate";
 let currentHour = new Date().getHours();
 let currentMinute = new Date().getMinutes();
 let currentCalendarMonth = new Date();
@@ -34,17 +33,28 @@ function getWeatherIcon(cloudCover, rain) {
   return weatherIcons.clear;
 }
 
+function degreesToDirection(deg) {
+  const index = Math.round(deg / 22.5) % 16;
+  return windDirections[index];
+}
+
+function formatDateForAPI(date) {
+  return date.getFullYear() + "-" + (date.getMonth() + 1).toString().padStart(2, '0') + "-" + date.getDate().toString().padStart(2, '0');
+}
+
+function formatDateDisplay(date) {
+  return date.getDate().toString().padStart(2, '0') + "-" + (date.getMonth() + 1).toString().padStart(2, '0') + "-" + date.getFullYear();
+}
+
 // Check if Ireland is in Daylight Savings Time (GMT+1)
 function isDaylightSavingsTime(date) {
   const year = date.getFullYear();
   
-  // Last Sunday in March
   const lastMarch = new Date(year, 2, 31);
   const lastSundayMarch = new Date(lastMarch);
   lastSundayMarch.setDate(lastMarch.getDate() - lastMarch.getDay());
   lastSundayMarch.setHours(1, 0, 0, 0);
   
-  // Last Sunday in October
   const lastOctober = new Date(year, 9, 31);
   const lastSundayOctober = new Date(lastOctober);
   lastSundayOctober.setDate(lastOctober.getDate() - lastOctober.getDay());
@@ -53,7 +63,6 @@ function isDaylightSavingsTime(date) {
   return date >= lastSundayMarch && date < lastSundayOctober;
 }
 
-// Get current Irish timezone string
 function getIrishTimezone() {
   const now = new Date();
   if (isDaylightSavingsTime(now)) {
@@ -63,7 +72,6 @@ function getIrishTimezone() {
   }
 }
 
-// Convert UTC tide time to Irish local time
 function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
   const utcTimestamp = Date.UTC(
     tideDateUTC.getUTCFullYear(),
@@ -85,19 +93,6 @@ function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
   };
 }
 
-function degreesToDirection(deg) {
-  const index = Math.round(deg / 22.5) % 16;
-  return windDirections[index];
-}
-
-function formatDateForAPI(date) {
-  return date.getFullYear() + "-" + (date.getMonth() + 1).toString().padStart(2, '0') + "-" + date.getDate().toString().padStart(2, '0');
-}
-
-function formatDateDisplay(date) {
-  return date.getDate().toString().padStart(2, '0') + "-" + (date.getMonth() + 1).toString().padStart(2, '0') + "-" + date.getFullYear();
-}
-
 function getMoonPhase(date) {
   const lunarCycle = 29.53058867;
   const knownNewMoon = new Date(2024, 0, 11);
@@ -113,6 +108,23 @@ function getMoonPhase(date) {
   if (phase < 0.8125) return "Last Quarter 🌗";
   if (phase < 0.9375) return "Waning Crescent 🌘";
   return "New Moon 🌑";
+}
+
+// Calculate Spring/Neap from moon phase
+function getTideTypeFromMoonPhase(date) {
+  const knownNewMoon = new Date(2024, 0, 11);
+  const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+  const lunarCycle = 29.53058867;
+  const phase = (diffDays % lunarCycle) / lunarCycle;
+  
+  const distanceToNew = Math.min(phase, 1 - phase);
+  const distanceToFull = Math.abs(phase - 0.5);
+  const distanceToSpring = Math.min(distanceToNew, distanceToFull);
+  const daysToSpring = distanceToSpring * lunarCycle;
+  
+  if (daysToSpring < 2) return "Springs";
+  if (daysToSpring > 5) return "Neaps";
+  return daysToSpring < 3.5 ? "Springs" : "Neaps";
 }
 
 function getSelectedTime() {
@@ -192,65 +204,6 @@ function loadUserPreferences() {
   }
 }
 
-
-// Check if Ireland is in Daylight Savings Time (GMT+1)
-function isDaylightSavingsTime(date) {
-  // Ireland DST: Last Sunday in March (01:00 GMT) to Last Sunday in October (01:00 GMT)
-  const year = date.getFullYear();
-  
-  // Calculate last Sunday in March
-  const lastMarch = new Date(year, 2, 31);
-  const lastSundayMarch = new Date(lastMarch);
-  lastSundayMarch.setDate(lastMarch.getDate() - lastMarch.getDay());
-  lastSundayMarch.setHours(1, 0, 0, 0);
-  
-  // Calculate last Sunday in October
-  const lastOctober = new Date(year, 9, 31);
-  const lastSundayOctober = new Date(lastOctober);
-  lastSundayOctober.setDate(lastOctober.getDate() - lastOctober.getDay());
-  lastSundayOctober.setHours(1, 0, 0, 0);
-  
-  // DST is active between last Sunday March and last Sunday October
-  return date >= lastSundayMarch && date < lastSundayOctober;
-}
-
-// Get current Irish timezone string
-function getIrishTimezone() {
-  const now = new Date();
-  if (isDaylightSavingsTime(now)) {
-    return "GMT+1 (IST)";
-  } else {
-    return "GMT (GMT)";
-  }
-}
-
-// Convert UTC tide time to Irish local time
-function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
-  const date = new Date(tideDateUTC);
-  // Create a UTC timestamp
-  const utcTimestamp = Date.UTC(
-    date.getUTCFullYear(), 
-    date.getUTCMonth(), 
-    date.getUTCDate(), 
-    utcHour, 
-    utcMinute, 
-    0
-  );
-  
-  // Convert to local Irish time (browser will apply DST automatically)
-  const localDate = new Date(utcTimestamp);
-  const localHour = localDate.getHours();
-  const localMinute = localDate.getMinutes();
-  
-  return {
-    hour: localHour,
-    minute: localMinute,
-    timeStr: localHour.toString().padStart(2, '0') + ":" + localMinute.toString().padStart(2, '0')
-  };
-}
-
-
-
 let savedPlans = [];
 
 function loadSavedPlans() {
@@ -288,25 +241,19 @@ async function fetchRealTideData(station, date) {
     const data = await response.json();
     
     if (data.error) {
-      console.warn("API error:", data.error);
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: data.error };
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
     if (!data.extremes || data.extremes.length === 0) {
-      console.warn("No tide data available for this date");
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true, errorMessage: "No tide predictions available for this date" };
+      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     }
     
-    // Use WorldTides spring/neap data if available
+    // Determine Spring or Neaps
     let tideType = "Unknown";
     if (data.spring !== undefined) {
-      // WorldTides returns spring=1 for Spring tides, spring=0 for Neaps
       tideType = data.spring === 1 ? "Springs" : "Neaps";
-      console.log(`WorldTides spring/neap data: ${tideType} (spring=${data.spring})`);
     } else {
-      // Fallback to calculation if spring data not available
-      console.log("No spring/neap data from API, using calculation fallback");
-      tideType = calculateTideTypeFromEvents(data.extremes);
+      tideType = getTideTypeFromMoonPhase(date);
     }
     
     const selectedYear = date.getFullYear();
@@ -329,7 +276,6 @@ async function fetchRealTideData(station, date) {
         tideEvents.push({
           type: extreme.type === "High" ? "High" : "Low",
           time: localTime.timeStr,
-          utcTime: utcHour.toString().padStart(2, '0') + ":" + utcMinute.toString().padStart(2, '0'),
           height: extreme.height,
           timestamp: extreme.dt * 1000
         });
@@ -342,8 +288,7 @@ async function fetchRealTideData(station, date) {
       events: tideEvents,
       moonPhase: getMoonPhase(date),
       tideType: tideType,
-      timezone: getIrishTimezone(),
-      rawSpring: data.spring
+      timezone: getIrishTimezone()
     };
     
     tideCache.set(cacheKey, { data: tideData, timestamp: now });
@@ -351,39 +296,8 @@ async function fetchRealTideData(station, date) {
     
   } catch (error) {
     console.error("Error fetching tide data:", error);
-    return { 
-      events: [], 
-      moonPhase: getMoonPhase(date), 
-      tideType: "Unknown", 
-      error: true, 
-      errorMessage: error.message 
-    };
+    return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
   }
-}
-
-// Fallback calculation function
-function calculateTideTypeFromEvents(events) {
-  if (!events || events.length < 4) return "Unknown";
-  
-  // Get heights for high and low tides separately
-  const highTides = events.filter(e => e.type === "High").map(e => e.height);
-  const lowTides = events.filter(e => e.type === "Low").map(e => e.height);
-  
-  if (highTides.length < 2 || lowTides.length < 2) return "Unknown";
-  
-  const avgHigh = highTides.reduce((a, b) => a + b, 0) / highTides.length;
-  const avgLow = lowTides.reduce((a, b) => a + b, 0) / lowTides.length;
-  const avgRange = avgHigh - avgLow;
-  
-  console.log(`Calculated avg range: ${avgRange.toFixed(2)}m`);
-  
-  // Spring tides have larger ranges (typically > 3m), Neaps smaller (< 2.5m)
-  if (avgRange > 3.0) return "Springs";
-  if (avgRange < 2.2) return "Neaps";
-  
-  // If in between, check the pattern - Springs happen twice a month
-  // For simplicity, use 2.6m as threshold
-  return avgRange > 2.6 ? "Springs" : "Neaps";
 }
 
 async function fetchRealWeather(station, date) {
@@ -392,7 +306,7 @@ async function fetchRealWeather(station, date) {
     const lon = station.lon;
     const dateStr = formatDateForAPI(date);
     
-    const weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&timezone=auto&start_date=" + dateStr + "&end_date=" + dateStr;
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
     
     const response = await fetch(weatherUrl);
     
@@ -428,7 +342,6 @@ async function fetchRealWeather(station, date) {
       hourly.push({
         time: hour.toString().padStart(2, '0') + ":00",
         windSpeed: kmhToBft(windSpeedKmh),
-        windSpeedKmh: windSpeedKmh,
         windDir: data.hourly.wind_direction_10m[i] || 0,
         gusts: kmhToBft(data.hourly.wind_gusts_10m[i] || 0),
         swellHeight: Math.min(3, Math.max(0.2, estimatedSwell)),
@@ -465,6 +378,43 @@ async function fetchRealWeather(station, date) {
     }
     return emptyHourly;
   }
+}
+
+function isSlackWaterTime(tideEvents, hour, minute) {
+  if (!tideEvents || tideEvents.length === 0) return false;
+  const totalMinutes = hour * 60 + minute;
+  for (let i = 0; i < tideEvents.length; i++) {
+    const tideParts = tideEvents[i].time.split(':');
+    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+    const diff = Math.abs(totalMinutes - tideMinutes);
+    if (diff <= 40) return true;
+  }
+  return false;
+}
+
+// Arrow functions
+function getWindArrow(windDirDeg) {
+  if (windDirDeg >= 337.5 || windDirDeg < 22.5) return "↓";
+  if (windDirDeg >= 22.5 && windDirDeg < 67.5) return "↙";
+  if (windDirDeg >= 67.5 && windDirDeg < 112.5) return "←";
+  if (windDirDeg >= 112.5 && windDirDeg < 157.5) return "↖";
+  if (windDirDeg >= 157.5 && windDirDeg < 202.5) return "↑";
+  if (windDirDeg >= 202.5 && windDirDeg < 247.5) return "↗";
+  if (windDirDeg >= 247.5 && windDirDeg < 292.5) return "→";
+  if (windDirDeg >= 292.5 && windDirDeg < 337.5) return "↘";
+  return "→";
+}
+
+function getSwellArrow(swellDirDeg) {
+  if (swellDirDeg >= 337.5 || swellDirDeg < 22.5) return "↓";
+  if (swellDirDeg >= 22.5 && swellDirDeg < 67.5) return "↙";
+  if (swellDirDeg >= 67.5 && swellDirDeg < 112.5) return "←";
+  if (swellDirDeg >= 112.5 && swellDirDeg < 157.5) return "↖";
+  if (swellDirDeg >= 157.5 && swellDirDeg < 202.5) return "↑";
+  if (swellDirDeg >= 202.5 && swellDirDeg < 247.5) return "↗";
+  if (swellDirDeg >= 247.5 && swellDirDeg < 292.5) return "→";
+  if (swellDirDeg >= 292.5 && swellDirDeg < 337.5) return "↘";
+  return "→";
 }
 
 async function getFormattedExportText() {
@@ -539,10 +489,12 @@ async function getFormattedExportText() {
   const lowWater = (prevTide && prevTide.type === 'Low') ? prevTide : ((nextTide && nextTide.type === 'Low') ? nextTide : null);
   
   const categories = Array.from(selectedChips).join(', ');
+  const windArrow = getWindArrow(hourWeather.windDir);
+  const swellArrow = getSwellArrow(hourWeather.swellDir);
   
   let weatherText = '';
   if (hourWeather && !hourWeather.error) {
-    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + degreesToDirection(hourWeather.windDir) + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourWeather.swellHeight.toFixed(1) + "m / " + hourWeather.swellPeriod + "s, Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
+    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + degreesToDirection(hourWeather.windDir) + " " + windArrow + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourWeather.swellHeight.toFixed(1) + "m / " + hourWeather.swellPeriod + "s from " + degreesToDirection(hourWeather.swellDir) + " " + swellArrow + ", Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
   } else {
     weatherText = 'Weather data unavailable';
   }
@@ -568,58 +520,6 @@ async function getFormattedExportText() {
   text += "\n---\nCreated with DiveSense - Always verify with official sources";
   
   return text;
-}
-
-function isSlackWaterTime(tideEvents, hour, minute) {
-  if (!tideEvents || tideEvents.length === 0) return false;
-  const totalMinutes = hour * 60 + minute;
-  for (let i = 0; i < tideEvents.length; i++) {
-    const tideParts = tideEvents[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    const diff = Math.abs(totalMinutes - tideMinutes);
-    if (diff <= 40) return true;
-  }
-  return false;
-}
-
-function getTideDirectionForHour(tideEvents, hour) {
-  if (!tideEvents || tideEvents.length < 2) return "No Data";
-  const targetMinutes = hour * 60;
-  let prevTide = null;
-  let nextTide = null;
-  for (let i = 0; i < tideEvents.length; i++) {
-    const tideParts = tideEvents[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    if (tideMinutes <= targetMinutes) prevTide = tideEvents[i];
-    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tideEvents[i];
-  }
-  if (!prevTide || !nextTide) return "No Data";
-  const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-  const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
-  if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
-  if (prevTide.type === "High" && nextTide.type === "Low") return "Ebbing 🌊⬇️";
-  if (prevTide.type === "Low" && nextTide.type === "High") return "Flooding 🌊⬆️";
-  return "Slack Water ⚡";
-}
-
-function getTideDirection(tideEvents, targetHour, targetMinute) {
-  if (!tideEvents || tideEvents.length < 2) return "No Data";
-  const targetMinutes = targetHour * 60 + targetMinute;
-  let prevTide = null;
-  let nextTide = null;
-  for (let i = 0; i < tideEvents.length; i++) {
-    const tideParts = tideEvents[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    if (tideMinutes <= targetMinutes) prevTide = tideEvents[i];
-    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tideEvents[i];
-  }
-  if (!prevTide || !nextTide) return "No Data";
-  const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-  const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
-  if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
-  if (prevTide.type === "High" && nextTide.type === "Low") return "Ebbing (Outgoing) 🌊⬇️";
-  if (prevTide.type === "Low" && nextTide.type === "High") return "Flooding (Incoming) 🌊⬆️";
-  return "Slack Water ⚡";
 }
 
 function buildCalendar() {
@@ -908,7 +808,6 @@ async function updateTides() {
     html += '<div class="' + tideTypeClass + '" style="font-size:1.2rem; margin-bottom:10px;">' + tideTypeIcon + ' ' + tides.tideType.toUpperCase() + ' TIDES</div>';
   }
   
-  // Show timezone info
   html += '<div class="text-small mb-2" style="text-align:center;">⏰ Times shown in ' + tides.timezone + '</div>';
   
   for (let i = 0; i < tides.events.length; i++) {
@@ -917,10 +816,10 @@ async function updateTides() {
     html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
   }
   
-  // Add LAT explanation
   html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
+  html += '📐 Heights relative to LAT (Lowest Astronomical Tide) - the lowest predicted tide level over a full nodal cycle';
   html += '</div>';
-  html += '<div class="text-small mt-2"> ' + tides.moonPhase + '</div>';
+  html += '<div class="text-small mt-2">' + tides.moonPhase + '</div>';
   
   const tideDiv = document.getElementById('tideData');
   if (tideDiv) tideDiv.innerHTML = html;
@@ -938,11 +837,9 @@ async function updateHourly() {
     return;
   }
   
-  // Get tide direction for each hour with improved logic
   function getTideDirectionWithFallback(tideEvents, hour) {
     if (!tideEvents || tideEvents.length === 0) return "No Data";
     
-    // Find the closest tide event
     const targetMinutes = hour * 60;
     let prevTide = null;
     let nextTide = null;
@@ -958,21 +855,14 @@ async function updateHourly() {
       }
     }
     
-    // Before first tide of the day
     if (!prevTide && nextTide) {
-      // If first tide is High, previous hours are Flooding
-      // If first tide is Low, previous hours are Ebbing
       return nextTide.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
     }
     
-    // After last tide of the day
     if (prevTide && !nextTide) {
-      // If last tide is High, remaining hours are Ebbing
-      // If last tide is Low, remaining hours are Flooding
       return prevTide.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
     }
     
-    // Normal case - between two tides
     if (prevTide && nextTide) {
       const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
       const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
@@ -984,32 +874,6 @@ async function updateHourly() {
     }
     
     return "No Data";
-  }
-  
-  // Function to get wind arrow (points where wind is going - opposite of source)
-  function getWindArrow(windDirDeg) {
-    if (windDirDeg >= 337.5 || windDirDeg < 22.5) return "↓"; // North wind → going South
-    if (windDirDeg >= 22.5 && windDirDeg < 67.5) return "↙"; // NE wind → going SW
-    if (windDirDeg >= 67.5 && windDirDeg < 112.5) return "←"; // East wind → going West
-    if (windDirDeg >= 112.5 && windDirDeg < 157.5) return "↖"; // SE wind → going NW
-    if (windDirDeg >= 157.5 && windDirDeg < 202.5) return "↑"; // South wind → going North
-    if (windDirDeg >= 202.5 && windDirDeg < 247.5) return "↗"; // SW wind → going NE
-    if (windDirDeg >= 247.5 && windDirDeg < 292.5) return "→"; // West wind → going East
-    if (windDirDeg >= 292.5 && windDirDeg < 337.5) return "↘"; // NW wind → going SE
-    return "→";
-  }
-  
-  // Function to get swell arrow (points where swell is coming FROM)
-  function getSwellArrow(swellDirDeg) {
-    if (swellDirDeg >= 337.5 || swellDirDeg < 22.5) return "↓"; // FROM North
-    if (swellDirDeg >= 22.5 && swellDirDeg < 67.5) return "↙"; // FROM NE
-    if (swellDirDeg >= 67.5 && swellDirDeg < 112.5) return "←"; // FROM East
-    if (swellDirDeg >= 112.5 && swellDirDeg < 157.5) return "↖"; // FROM SE
-    if (swellDirDeg >= 157.5 && swellDirDeg < 202.5) return "↑"; // FROM South
-    if (swellDirDeg >= 202.5 && swellDirDeg < 247.5) return "↗"; // FROM SW
-    if (swellDirDeg >= 247.5 && swellDirDeg < 292.5) return "→"; // FROM West
-    if (swellDirDeg >= 292.5 && swellDirDeg < 337.5) return "↘"; // FROM NW
-    return "→";
   }
   
   let html = '';
@@ -1054,31 +918,6 @@ async function updateDetailed() {
   }
   if (!hourData) hourData = weather[12];
   
-  // Get wind arrow
-  function getWindArrow(windDirDeg) {
-    if (windDirDeg >= 337.5 || windDirDeg < 22.5) return "↓";
-    if (windDirDeg >= 22.5 && windDirDeg < 67.5) return "↙";
-    if (windDirDeg >= 67.5 && windDirDeg < 112.5) return "←";
-    if (windDirDeg >= 112.5 && windDirDeg < 157.5) return "↖";
-    if (windDirDeg >= 157.5 && windDirDeg < 202.5) return "↑";
-    if (windDirDeg >= 202.5 && windDirDeg < 247.5) return "↗";
-    if (windDirDeg >= 247.5 && windDirDeg < 292.5) return "→";
-    if (windDirDeg >= 292.5 && windDirDeg < 337.5) return "↘";
-    return "→";
-  }
-  
-  function getSwellArrow(swellDirDeg) {
-    if (swellDirDeg >= 337.5 || swellDirDeg < 22.5) return "↓";
-    if (swellDirDeg >= 22.5 && swellDirDeg < 67.5) return "↙";
-    if (swellDirDeg >= 67.5 && swellDirDeg < 112.5) return "←";
-    if (swellDirDeg >= 112.5 && swellDirDeg < 157.5) return "↖";
-    if (swellDirDeg >= 157.5 && swellDirDeg < 202.5) return "↑";
-    if (swellDirDeg >= 202.5 && swellDirDeg < 247.5) return "↗";
-    if (swellDirDeg >= 247.5 && swellDirDeg < 292.5) return "→";
-    if (swellDirDeg >= 292.5 && swellDirDeg < 337.5) return "↘";
-    return "→";
-  }
-  
   let prevTide = null;
   let nextTide = null;
   const targetMinutes = selectedHour * 60 + selectedMinute;
@@ -1091,7 +930,6 @@ async function updateDetailed() {
   
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
   
-  // Get tide direction with fallback for before first/after last tide
   let tideDirection = "No Data";
   if (!prevTide && nextTide) {
     tideDirection = nextTide.type === "High" ? "Flooding (Incoming) 🌊⬆️" : "Ebbing (Outgoing) 🌊⬇️";
@@ -1144,7 +982,7 @@ async function updateDetailed() {
     if (tides.tideType !== 'Unknown') {
       html += '<div class="detail-row">' + (tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)') + '</div>';
     }
-    html += '<div class="detail-row">' + tides.moonPhase + '</div>';
+    html += '<div class="detail-row">🌙 ' + tides.moonPhase + '</div>';
   } else if (tides.events.length === 0) {
     html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
   }
@@ -1152,7 +990,7 @@ async function updateDetailed() {
   const panel = document.getElementById('detailedPanel');
   if (panel) panel.innerHTML = html;
 }
-  
+
 function initChips() {
   const categories = ["Reef", "Wreck", "Drift", "Deep", "Night", "Snorkel", "Kelp", "Photography", "Navigation", "Training", "Citizen Science", "Fitness Test"];
   const container = document.getElementById('chipsContainer');
@@ -1207,8 +1045,7 @@ function saveCurrentPlan() {
       time: getSelectedTime(),
       diveType: diveType,
       maxDepth: maxDepthElem ? maxDepthElem.value : '',
-      categories: Array.from(selectedChips),
-      risk: currentRisk
+      categories: Array.from(selectedChips)
     };
     
     savedPlans.unshift(plan);
@@ -1275,7 +1112,7 @@ function renderSavedPlans() {
     const plan = savedPlans[i];
     html += '<div class="saved-plan-item" data-plan-id="' + plan.id + '">';
     html += '<div><div class="saved-plan-name">' + escapeHtml(plan.name) + '</div>';
-    html += '<div class="saved-plan-details">' + plan.station + ' | ' + plan.date + ' | ' + plan.time + ' | Risk: ' + plan.risk + '</div></div>';
+    html += '<div class="saved-plan-details">' + plan.station + ' | ' + plan.date + ' | ' + plan.time + '</div></div>';
     html += '<button class="delete-plan-btn" data-plan-id="' + plan.id + '">🗑️</button>';
     html += '</div>';
   }
