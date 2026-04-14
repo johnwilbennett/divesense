@@ -926,11 +926,85 @@ async function updateHourly() {
     return;
   }
   
+  // Get tide direction for each hour with improved logic
+  function getTideDirectionWithFallback(tideEvents, hour) {
+    if (!tideEvents || tideEvents.length === 0) return "No Data";
+    
+    // Find the closest tide event
+    const targetMinutes = hour * 60;
+    let prevTide = null;
+    let nextTide = null;
+    
+    for (let i = 0; i < tideEvents.length; i++) {
+      const tideParts = tideEvents[i].time.split(':');
+      const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
+      if (tideMinutes <= targetMinutes) {
+        prevTide = tideEvents[i];
+      }
+      if (tideMinutes >= targetMinutes && !nextTide) {
+        nextTide = tideEvents[i];
+      }
+    }
+    
+    // Before first tide of the day
+    if (!prevTide && nextTide) {
+      // If first tide is High, previous hours are Flooding
+      // If first tide is Low, previous hours are Ebbing
+      return nextTide.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
+    }
+    
+    // After last tide of the day
+    if (prevTide && !nextTide) {
+      // If last tide is High, remaining hours are Ebbing
+      // If last tide is Low, remaining hours are Flooding
+      return prevTide.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
+    }
+    
+    // Normal case - between two tides
+    if (prevTide && nextTide) {
+      const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
+      const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+      
+      if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
+      
+      if (prevTide.type === "High" && nextTide.type === "Low") return "Ebbing 🌊⬇️";
+      if (prevTide.type === "Low" && nextTide.type === "High") return "Flooding 🌊⬆️";
+    }
+    
+    return "No Data";
+  }
+  
+  // Function to get wind arrow (points where wind is going - opposite of source)
+  function getWindArrow(windDirDeg) {
+    if (windDirDeg >= 337.5 || windDirDeg < 22.5) return "↓"; // North wind → going South
+    if (windDirDeg >= 22.5 && windDirDeg < 67.5) return "↙"; // NE wind → going SW
+    if (windDirDeg >= 67.5 && windDirDeg < 112.5) return "←"; // East wind → going West
+    if (windDirDeg >= 112.5 && windDirDeg < 157.5) return "↖"; // SE wind → going NW
+    if (windDirDeg >= 157.5 && windDirDeg < 202.5) return "↑"; // South wind → going North
+    if (windDirDeg >= 202.5 && windDirDeg < 247.5) return "↗"; // SW wind → going NE
+    if (windDirDeg >= 247.5 && windDirDeg < 292.5) return "→"; // West wind → going East
+    if (windDirDeg >= 292.5 && windDirDeg < 337.5) return "↘"; // NW wind → going SE
+    return "→";
+  }
+  
+  // Function to get swell arrow (points where swell is coming FROM)
+  function getSwellArrow(swellDirDeg) {
+    if (swellDirDeg >= 337.5 || swellDirDeg < 22.5) return "↓"; // FROM North
+    if (swellDirDeg >= 22.5 && swellDirDeg < 67.5) return "↙"; // FROM NE
+    if (swellDirDeg >= 67.5 && swellDirDeg < 112.5) return "←"; // FROM East
+    if (swellDirDeg >= 112.5 && swellDirDeg < 157.5) return "↖"; // FROM SE
+    if (swellDirDeg >= 157.5 && swellDirDeg < 202.5) return "↑"; // FROM South
+    if (swellDirDeg >= 202.5 && swellDirDeg < 247.5) return "↗"; // FROM SW
+    if (swellDirDeg >= 247.5 && swellDirDeg < 292.5) return "→"; // FROM West
+    if (swellDirDeg >= 292.5 && swellDirDeg < 337.5) return "↘"; // FROM NW
+    return "→";
+  }
+  
   let html = '';
   for (let i = 0; i < weather.length; i++) {
     const hour = weather[i];
     const hourNum = parseInt(hour.time);
-    const tideDirection = getTideDirectionForHour(tides.events, hourNum);
+    const tideDirection = getTideDirectionWithFallback(tides.events, hourNum);
     let tideIcon = '';
     if (tideDirection.includes('Flooding')) tideIcon = '⬆️';
     else if (tideDirection.includes('Ebbing')) tideIcon = '⬇️';
@@ -938,12 +1012,15 @@ async function updateHourly() {
     else tideIcon = '❓';
     
     const weatherIcon = getWeatherIcon(hour.cloudCover, hour.rain);
+    const windArrow = getWindArrow(hour.windDir);
+    const swellArrow = getSwellArrow(hour.swellDir);
     const highlightClass = (hourNum === selectedHour) ? 'highlight' : '';
+    
     html += '<div class="hourly-card ' + highlightClass + '">';
     html += '<strong>' + hour.time + '</strong>';
-    html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft</div>';
+    html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft ' + windArrow + '</div>';
     html += '<div>' + degreesToDirection(hour.windDir) + '</div>';
-    html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm / ' + hour.swellPeriod + 's</div>';
+    html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm / ' + hour.swellPeriod + 's ' + swellArrow + '</div>';
     html += '<div style="font-size: 10px; margin-top: 4px;">' + tideIcon + ' ' + tideDirection + '</div>';
     html += '</div>';
   }
@@ -965,6 +1042,31 @@ async function updateDetailed() {
   }
   if (!hourData) hourData = weather[12];
   
+  // Get wind arrow
+  function getWindArrow(windDirDeg) {
+    if (windDirDeg >= 337.5 || windDirDeg < 22.5) return "↓";
+    if (windDirDeg >= 22.5 && windDirDeg < 67.5) return "↙";
+    if (windDirDeg >= 67.5 && windDirDeg < 112.5) return "←";
+    if (windDirDeg >= 112.5 && windDirDeg < 157.5) return "↖";
+    if (windDirDeg >= 157.5 && windDirDeg < 202.5) return "↑";
+    if (windDirDeg >= 202.5 && windDirDeg < 247.5) return "↗";
+    if (windDirDeg >= 247.5 && windDirDeg < 292.5) return "→";
+    if (windDirDeg >= 292.5 && windDirDeg < 337.5) return "↘";
+    return "→";
+  }
+  
+  function getSwellArrow(swellDirDeg) {
+    if (swellDirDeg >= 337.5 || swellDirDeg < 22.5) return "↓";
+    if (swellDirDeg >= 22.5 && swellDirDeg < 67.5) return "↙";
+    if (swellDirDeg >= 67.5 && swellDirDeg < 112.5) return "←";
+    if (swellDirDeg >= 112.5 && swellDirDeg < 157.5) return "↖";
+    if (swellDirDeg >= 157.5 && swellDirDeg < 202.5) return "↑";
+    if (swellDirDeg >= 202.5 && swellDirDeg < 247.5) return "↗";
+    if (swellDirDeg >= 247.5 && swellDirDeg < 292.5) return "→";
+    if (swellDirDeg >= 292.5 && swellDirDeg < 337.5) return "↘";
+    return "→";
+  }
+  
   let prevTide = null;
   let nextTide = null;
   const targetMinutes = selectedHour * 60 + selectedMinute;
@@ -976,45 +1078,38 @@ async function updateDetailed() {
   }
   
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
-  const tideDirection = getTideDirection(tides.events, selectedHour, selectedMinute);
   
-  let riskScore = 0;
-  let riskLevel = "Low";
-  let riskPercent = 12.5;
-  
-  if (hourData && !hourData.error) {
-    riskScore = (hourData.windSpeed / 12) * 0.4 + (hourData.swellHeight / 4) * 0.4 + (1 - (hourData.visibility / 20)) * 0.2;
-    riskScore = Math.min(1, Math.max(0, riskScore));
-    if (riskScore > 0.75) { riskLevel = "High"; riskPercent = 87.5; }
-    else if (riskScore > 0.5) { riskLevel = "Caution"; riskPercent = 62.5; }
-    else if (riskScore > 0.25) { riskLevel = "Moderate"; riskPercent = 37.5; }
+  // Get tide direction with fallback for before first/after last tide
+  let tideDirection = "No Data";
+  if (!prevTide && nextTide) {
+    tideDirection = nextTide.type === "High" ? "Flooding (Incoming) 🌊⬆️" : "Ebbing (Outgoing) 🌊⬇️";
+  } else if (prevTide && !nextTide) {
+    tideDirection = prevTide.type === "High" ? "Ebbing (Outgoing) 🌊⬇️" : "Flooding (Incoming) 🌊⬆️";
+  } else if (prevTide && nextTide) {
+    const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
+    const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+    if (timeToPrev <= 40 || timeToNext <= 40) {
+      tideDirection = "Slack Water ⚡";
+    } else if (prevTide.type === "High" && nextTide.type === "Low") {
+      tideDirection = "Ebbing (Outgoing) 🌊⬇️";
+    } else if (prevTide.type === "Low" && nextTide.type === "High") {
+      tideDirection = "Flooding (Incoming) 🌊⬆️";
+    }
   }
-  currentRisk = riskLevel;
   
-  const riskBar = document.getElementById('riskBarGradient');
-  if (riskBar) {
-    riskBar.style.background = 'linear-gradient(90deg, #1f8a4c 0%, #1f8a4c ' + Math.max(0, riskPercent - 15) + '%, #e0b01a ' + Math.max(0, riskPercent - 5) + '%, #e67e22 ' + Math.min(100, riskPercent + 5) + '%, #c0392b ' + Math.min(100, riskPercent + 20) + '%)';
-  }
-  
-  const riskPointer = document.getElementById('riskPointer');
-  if (riskPointer) riskPointer.style.marginLeft = riskPercent + '%';
-  
-  let riskColor = '#88ff88';
-  if (riskLevel === 'High') riskColor = '#ff8888';
-  else if (riskLevel === 'Caution') riskColor = '#ffaa66';
-  else if (riskLevel === 'Moderate') riskColor = '#ffff88';
+  const weatherIcon = getWeatherIcon(hourData.cloudCover, hourData.rain);
+  const windArrow = getWindArrow(hourData.windDir);
+  const swellArrow = getSwellArrow(hourData.swellDir);
   
   let html = '';
-  
   if (hourData && !hourData.error) {
-    const weatherIcon = getWeatherIcon(hourData.cloudCover, hourData.rain);
-    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourData.windSpeed + ' Bft ' + degreesToDirection(hourData.windDir) + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
+    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourData.windSpeed + ' Bft ' + degreesToDirection(hourData.windDir) + ' ' + windArrow + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
     html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
     html += '<div class="detail-row"><strong>Rain:</strong> ' + hourData.rain.toFixed(1) + ' mm</div>';
     html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourData.cloudCover + '%</div>';
     html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourData.airTemp.toFixed(1) + '°C</div>';
     html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourData.uvIndex + '</div>';
-    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm / ' + hourData.swellPeriod + 's from ' + degreesToDirection(hourData.swellDir) + '</div>';
+    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm / ' + hourData.swellPeriod + 's from ' + degreesToDirection(hourData.swellDir) + ' ' + swellArrow + '</div>';
   } else {
     html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   }
@@ -1022,8 +1117,6 @@ async function updateDetailed() {
   if (isSlackWater && tides.events.length > 0) {
     html += '<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>';
   }
-  
-  html += '<div class="detail-row"><strong>Risk Assessment:</strong> <span style="color: ' + riskColor + '; font-weight: bold;">' + riskLevel + '</span></div>';
   
   if ((prevTide || nextTide) && tides.events.length > 0) {
     html += '<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>';
@@ -1047,7 +1140,7 @@ async function updateDetailed() {
   const panel = document.getElementById('detailedPanel');
   if (panel) panel.innerHTML = html;
 }
-
+  
 function initChips() {
   const categories = ["Reef", "Wreck", "Drift", "Deep", "Night", "Snorkel", "Kelp", "Photography", "Navigation", "Training", "Citizen Science", "Fitness Test"];
   const container = document.getElementById('chipsContainer');

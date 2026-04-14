@@ -702,3 +702,51 @@ input[type="checkbox"] {
     min-width: 88px;
   }
 }
+/* Station Scroll - Visible scrollbar on desktop */
+.station-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 13px;
+  padding-bottom: 9px;
+  width: 100%;
+}
+
+/* Visible scrollbar for desktop */
+.station-scroll::-webkit-scrollbar {
+  height: 8px;
+  display: block;
+}
+
+.station-scroll::-webkit-scrollbar-track {
+  background: #0a1a2f;
+  border-radius: 10px;
+}
+
+.station-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #2FFFEF, #00FFAA);
+  border-radius: 10px;
+}
+
+/* Hourly Scroll - Visible scrollbar on desktop */
+.hourly-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 13px;
+  padding: 9px 0;
+  width: 100%;
+}
+
+.hourly-scroll::-webkit-scrollbar {
+  height: 8px;
+  display: block;
+}
+
+.hourly-scroll::-webkit-scrollbar-track {
+  background: #0a1a2f;
+  border-radius: 10px;
+}
+
+.hourly-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #2FFFEF, #00FFAA);
+  border-radius: 10px;
+}
