@@ -1350,10 +1350,21 @@ if (maxDepthInput) {
 
 const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
-  whatsappBtn.addEventListener('click', async function() {
+  whatsappBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    
     const text = await getFormattedExportText();
-    // Simple URL that works across all platforms
-    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    const encodedText = encodeURIComponent(text);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
+    if (isIOS) {
+      // iOS: Use location.href with a slight delay (user gesture preserved)
+      setTimeout(() => {
+        window.location.href = `https://wa.me/?text=${encodedText}`;
+      }, 50);
+    } else {
+      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    }
   });
 }
 
