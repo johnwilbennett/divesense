@@ -693,30 +693,20 @@ input[type="checkbox"] {
     min-width: 150px;
   }
 }
-/* Blended Header Image Styles */
+/* Blended Header Image Styles - Full image visible */
 .header-image-wrapper {
   position: relative;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto 20px auto;
   border-radius: 24px;
   overflow: hidden;
+  margin-bottom: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: #020B24; /* Fallback color */
 }
 
 .header-bg-image {
   width: 100%;
-  max-width: 100%;
-  height: auto;
-  display: block;
-  transition: transform 0.5s ease;
-}
-
-/* If you want a specific height while maintaining width */
-.header-bg-image {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
+  height: auto;  /* This shows the full image height */
   display: block;
   transition: transform 0.5s ease;
 }
@@ -732,9 +722,9 @@ input[type="checkbox"] {
   width: 100%;
   height: 100%;
   background: linear-gradient(135deg, 
-    rgba(2, 11, 36, 0.7) 0%,
-    rgba(2, 11, 36, 0.4) 50%,
-    rgba(47, 255, 238, 0.15) 100%);
+    rgba(2, 11, 36, 0.6) 0%,
+    rgba(2, 11, 36, 0.3) 50%,
+    rgba(47, 255, 238, 0.1) 100%);
   pointer-events: none;
 }
 
@@ -760,12 +750,13 @@ input[type="checkbox"] {
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
+/* Optional: Add a subtle border to frame the image */
+.header-image-wrapper {
+  border: 1px solid rgba(47, 255, 238, 0.2);
+}
+
 /* Mobile responsive */
 @media (max-width: 600px) {
-  .header-bg-image {
-    height: 90px;
-  }
-  
   .header-content .neon-title {
     font-size: 20px;
   }
