@@ -1343,7 +1343,24 @@ const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
   whatsappBtn.addEventListener('click', async function() {
     const text = await getFormattedExportText();
-    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    const encodedText = encodeURIComponent(text);
+    
+    // Detect if on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // For mobile: Try to use the WhatsApp app directly
+      // Method 1: whatsapp:// scheme (opens app)
+      window.location.href = 'whatsapp://send?text=' + encodedText;
+      
+      // Fallback: If app doesn't open, try web after 2 seconds
+      setTimeout(function() {
+        window.open('https://wa.me/?text=' + encodedText, '_blank');
+      }, 500);
+    } else {
+      // For desktop: Use web WhatsApp
+      window.open('https://web.whatsapp.com/send?text=' + encodedText, '_blank');
+    }
   });
 }
 
