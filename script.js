@@ -1353,22 +1353,42 @@ if (whatsappBtn) {
   whatsappBtn.addEventListener('click', async function() {
     const text = await getFormattedExportText();
     const encodedText = encodeURIComponent(text);
-    const phoneNumber = ''; // Leave empty for user to select contact
     
-    // Try multiple methods for better compatibility
-    const whatsappUrls = [
-      'whatsapp://send?text=' + encodedText,  // iOS/Android app
-      'https://wa.me/?text=' + encodedText,    // Universal web fallback
-      'https://api.whatsapp.com/send?text=' + encodedText  // Another web method
-    ];
+    // Detect iPhone/iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
-    // Try the first method
-    window.location.href = whatsappUrls[0];
-    
-    // Fallback to web if app doesn't respond
-    setTimeout(function() {
-      window.open(whatsappUrls[1], '_blank');
-    }, 800);
+    if (isIOS) {
+      // For iOS: Use a different approach - create a temporary link with user gesture
+      // This bypasses the "trying to open another application" error
+      const whatsappURL = `https://wa.me/?text=${encodedText}`;
+      
+      // Create a temporary anchor element
+      const tempLink = document.createElement('a');
+      tempLink.href = whatsappURL;
+      tempLink.target = '_blank';
+      tempLink.rel = 'noopener noreferrer';
+      
+      // Add a small delay to ensure user gesture is registered
+      setTimeout(() => {
+        tempLink.click();
+      }, 100);
+      
+      // Also try the app scheme as backup (may still show warning but works)
+      setTimeout(() => {
+        window.location.href = `whatsapp://send?text=${encodedText}`;
+      }, 500);
+      
+    } else if (isMobile) {
+      // Android: Try app first, then web fallback
+      window.location.href = `whatsapp://send?text=${encodedText}`;
+      setTimeout(function() {
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+      }, 800);
+    } else {
+      // Desktop: Use web WhatsApp
+      window.open(`https://web.whatsapp.com/send?text=${encodedText}`, '_blank');
+    }
   });
 }
 
