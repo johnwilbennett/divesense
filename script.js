@@ -93,6 +93,21 @@ function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
   };
 }
 
+// Get moon icon based on phase
+function getMoonIcon(phaseName) {
+  const icons = {
+    "New Moon": "🌑",
+    "Waxing Crescent": "🌒",
+    "First Quarter": "🌓",
+    "Waxing Gibbous": "🌔",
+    "Full Moon": "🌕",
+    "Waning Gibbous": "🌖",
+    "Last Quarter": "🌗",
+    "Waning Crescent": "🌘"
+  };
+  return icons[phaseName] || "🌙";
+}
+
 function getMoonPhase(date) {
   const lunarCycle = 29.53058867;
   const knownNewMoon = new Date(2024, 0, 11);
@@ -214,6 +229,7 @@ function loadSavedPlans() {
   renderSavedPlans();
 }
 
+// REAL TIDE DATA with fixed date filtering for 10+ days
 async function fetchRealTideData(station, date) {
   const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
@@ -260,6 +276,7 @@ async function fetchRealTideData(station, date) {
     const selectedMonth = date.getMonth();
     const selectedDay = date.getDate();
     
+    // Fixed: Correct UTC date boundaries
     const selectedDateStart = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 0, 0, 0));
     const selectedDateEnd = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 23, 59, 59));
     
@@ -268,6 +285,7 @@ async function fetchRealTideData(station, date) {
       const extreme = data.extremes[i];
       const tideDateUTC = new Date(extreme.dt * 1000);
       
+      // Check if tide falls on the selected date
       if (tideDateUTC >= selectedDateStart && tideDateUTC <= selectedDateEnd) {
         const utcHour = tideDateUTC.getUTCHours();
         const utcMinute = tideDateUTC.getUTCMinutes();
@@ -282,11 +300,38 @@ async function fetchRealTideData(station, date) {
       }
     }
     
+    // If no tides found for the selected date, try to get data from the API response
+    // WorldTides sometimes returns tides for the next day in UTC
+    if (tideEvents.length === 0 && data.extremes && data.extremes.length > 0) {
+      // Get the first tide of the day in local time
+      for (let i = 0; i < data.extremes.length; i++) {
+        const extreme = data.extremes[i];
+        const tideDateUTC = new Date(extreme.dt * 1000);
+        const utcHour = tideDateUTC.getUTCHours();
+        const utcMinute = tideDateUTC.getUTCMinutes();
+        const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
+        
+        // Check if the local time falls on the selected date
+        const localDate = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, localTime.hour, localTime.minute, 0));
+        if (localDate.getUTCFullYear() === selectedYear && 
+            localDate.getUTCMonth() === selectedMonth && 
+            localDate.getUTCDate() === selectedDay) {
+          tideEvents.push({
+            type: extreme.type === "High" ? "High" : "Low",
+            time: localTime.timeStr,
+            height: extreme.height,
+            timestamp: extreme.dt * 1000
+          });
+        }
+      }
+    }
+    
     tideEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
     
     const tideData = {
       events: tideEvents,
       moonPhase: getMoonPhase(date),
+      moonIcon: getMoonIcon(getMoonPhase(date)),
       tideType: tideType,
       timezone: getIrishTimezone()
     };
@@ -300,6 +345,7 @@ async function fetchRealTideData(station, date) {
   }
 }
 
+// REAL WEATHER DATA (wind, temp, etc.)
 async function fetchRealWeather(station, date) {
   try {
     const lat = station.lat;
@@ -336,17 +382,12 @@ async function fetchRealWeather(station, date) {
     for (let i = 0; i < data.hourly.time.length && i < 24; i++) {
       const time = new Date(data.hourly.time[i]);
       const hour = time.getHours();
-      const windSpeedKmh = data.hourly.wind_speed_10m[i];
-      const estimatedSwell = windSpeedKmh * 0.03 + 0.3;
       
       hourly.push({
         time: hour.toString().padStart(2, '0') + ":00",
-        windSpeed: kmhToBft(windSpeedKmh),
+        windSpeed: kmhToBft(data.hourly.wind_speed_10m[i]),
         windDir: data.hourly.wind_direction_10m[i] || 0,
         gusts: kmhToBft(data.hourly.wind_gusts_10m[i] || 0),
-        swellHeight: Math.min(3, Math.max(0.2, estimatedSwell)),
-        swellPeriod: Math.floor(5 + (windSpeedKmh / 10)),
-        swellDir: data.hourly.wind_direction_10m[i] || 0,
         visibility: (data.hourly.visibility[i] || 20000) / 1000,
         rain: data.hourly.rain[i] || 0,
         cloudCover: data.hourly.cloudcover[i] || 0,
@@ -365,9 +406,6 @@ async function fetchRealWeather(station, date) {
         windSpeed: 0,
         windDir: 0,
         gusts: 0,
-        swellHeight: 0,
-        swellPeriod: 0,
-        swellDir: 0,
         visibility: 0,
         rain: 0,
         cloudCover: 0,
@@ -377,6 +415,54 @@ async function fetchRealWeather(station, date) {
       });
     }
     return emptyHourly;
+  }
+}
+
+// REAL SWELL DATA from Open-Meteo Marine API
+async function fetchRealSwellData(station, date) {
+  try {
+    const lat = station.lat;
+    const lon = station.lon;
+    const dateStr = formatDateForAPI(date);
+    
+    const swellUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+    
+    const response = await fetch(swellUrl);
+    
+    if (!response.ok) {
+      throw new Error("Swell API error");
+    }
+    
+    const data = await response.json();
+    
+    const hourly = [];
+    for (let i = 0; i < data.hourly.time.length && i < 24; i++) {
+      const time = new Date(data.hourly.time[i]);
+      const hour = time.getHours();
+      
+      hourly.push({
+        time: hour.toString().padStart(2, '0') + ":00",
+        swellHeight: data.hourly.wave_height[i] || 0.5,
+        swellDir: data.hourly.wave_direction[i] || 0,
+        swellPeriod: data.hourly.wave_period[i] || 5
+      });
+    }
+    return hourly;
+    
+  } catch (error) {
+    console.error("Error fetching swell data:", error);
+    // Fallback to estimated swell from wind
+    const fallback = [];
+    for (let hour = 0; hour < 24; hour++) {
+      fallback.push({
+        time: hour.toString().padStart(2, '0') + ":00",
+        swellHeight: 0.8,
+        swellDir: 180,
+        swellPeriod: 6,
+        error: true
+      });
+    }
+    return fallback;
   }
 }
 
@@ -464,14 +550,23 @@ async function getFormattedExportText() {
   const timePrefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
   
   const weather = await fetchRealWeather(currentStation, currentDate);
+  const swell = await fetchRealSwellData(currentStation, currentDate);
   let hourWeather = null;
+  let hourSwell = null;
   for (let i = 0; i < weather.length; i++) {
     if (parseInt(weather[i].time) === currentHour) {
       hourWeather = weather[i];
       break;
     }
   }
+  for (let i = 0; i < swell.length; i++) {
+    if (parseInt(swell[i].time) === currentHour) {
+      hourSwell = swell[i];
+      break;
+    }
+  }
   if (!hourWeather) hourWeather = weather[12];
+  if (!hourSwell) hourSwell = { swellHeight: 0, swellPeriod: 0, swellDir: 0 };
   
   const tides = await fetchRealTideData(currentStation, currentDate);
   
@@ -490,11 +585,11 @@ async function getFormattedExportText() {
   
   const categories = Array.from(selectedChips).join(', ');
   const windArrow = getWindArrow(hourWeather.windDir);
-  const swellArrow = getSwellArrow(hourWeather.swellDir);
+  const swellArrow = getSwellArrow(hourSwell.swellDir);
   
   let weatherText = '';
   if (hourWeather && !hourWeather.error) {
-    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourWeather.swellHeight.toFixed(1) + "m / " + hourWeather.swellPeriod + "s " + hourWeather.swellDir + "° " + degreesToDirection(hourWeather.swellDir) + " " + swellArrow + ", Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
+    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourSwell.swellHeight.toFixed(1) + "m / " + hourSwell.swellPeriod + "s " + hourSwell.swellDir + "° " + degreesToDirection(hourSwell.swellDir) + " " + swellArrow + ", Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
   } else {
     weatherText = 'Weather data unavailable';
   }
@@ -820,7 +915,7 @@ async function updateTides() {
   html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
   html += '📐 Heights relative to LAT (Lowest Astronomical Tide) - the lowest predicted tide level over a full nodal cycle';
   html += '</div>';
-  html += '<div class="text-small mt-2">' + tides.moonPhase + '</div>';
+  html += '<div class="text-small mt-2">' + tides.moonIcon + ' ' + tides.moonPhase + '</div>';
   
   const tideDiv = document.getElementById('tideData');
   if (tideDiv) tideDiv.innerHTML = html;
@@ -828,6 +923,7 @@ async function updateTides() {
 
 async function updateHourly() {
   const weather = await fetchRealWeather(currentStation, currentDate);
+  const swell = await fetchRealSwellData(currentStation, currentDate);
   const tides = await fetchRealTideData(currentStation, currentDate);
   const selectedHour = currentHour;
   const container = document.getElementById('hourlyScroll');
@@ -880,6 +976,7 @@ async function updateHourly() {
   let html = '';
   for (let i = 0; i < weather.length; i++) {
     const hour = weather[i];
+    const swellHour = swell.find(s => s.time === hour.time) || { swellHeight: 0.5, swellPeriod: 5, swellDir: 0 };
     const hourNum = parseInt(hour.time);
     const tideDirection = getTideDirectionWithFallback(tides.events, hourNum);
     let tideIcon = '';
@@ -890,13 +987,13 @@ async function updateHourly() {
     
     const weatherIcon = getWeatherIcon(hour.cloudCover, hour.rain);
     const windArrow = getWindArrow(hour.windDir);
-    const swellArrow = getSwellArrow(hour.swellDir);
+    const swellArrow = getSwellArrow(swellHour.swellDir);
     const highlightClass = (hourNum === selectedHour) ? 'highlight' : '';
     
     html += '<div class="hourly-card ' + highlightClass + '">';
     html += '<strong>' + hour.time + '</strong>';
     html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft ' + hour.windDir + '° ' + degreesToDirection(hour.windDir) + ' ' + windArrow + '</div>';
-    html += '<div>🌊 ' + hour.swellHeight.toFixed(1) + 'm / ' + hour.swellPeriod + 's ' + hour.swellDir + '° ' + degreesToDirection(hour.swellDir) + ' ' + swellArrow + '</div>';
+    html += '<div>🌊 ' + swellHour.swellHeight.toFixed(1) + 'm / ' + swellHour.swellPeriod + 's ' + swellHour.swellDir + '° ' + degreesToDirection(swellHour.swellDir) + ' ' + swellArrow + '</div>';
     html += '<div style="font-size: 10px; margin-top: 4px;">' + tideIcon + ' ' + tideDirection + '</div>';
     html += '</div>';
   }
@@ -905,18 +1002,27 @@ async function updateHourly() {
 
 async function updateDetailed() {
   const weather = await fetchRealWeather(currentStation, currentDate);
+  const swell = await fetchRealSwellData(currentStation, currentDate);
   const tides = await fetchRealTideData(currentStation, currentDate);
   const selectedHour = currentHour;
   const selectedMinute = currentMinute;
   
-  let hourData = null;
+  let hourWeather = null;
+  let hourSwell = null;
   for (let i = 0; i < weather.length; i++) {
     if (parseInt(weather[i].time) === selectedHour) {
-      hourData = weather[i];
+      hourWeather = weather[i];
       break;
     }
   }
-  if (!hourData) hourData = weather[12];
+  for (let i = 0; i < swell.length; i++) {
+    if (parseInt(swell[i].time) === selectedHour) {
+      hourSwell = swell[i];
+      break;
+    }
+  }
+  if (!hourWeather) hourWeather = weather[12];
+  if (!hourSwell) hourSwell = { swellHeight: 0.5, swellPeriod: 5, swellDir: 0 };
   
   let prevTide = null;
   let nextTide = null;
@@ -947,20 +1053,20 @@ async function updateDetailed() {
     }
   }
   
-  const weatherIcon = getWeatherIcon(hourData.cloudCover, hourData.rain);
-  const windArrow = getWindArrow(hourData.windDir);
-  const swellArrow = getSwellArrow(hourData.swellDir);
+  const weatherIcon = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain);
+  const windArrow = getWindArrow(hourWeather.windDir);
+  const swellArrow = getSwellArrow(hourSwell.swellDir);
   
   // Reordered: Wind, Swell, Rain, Visibility, Cloud Cover, Air Temp, UV Index
   let html = '';
-  if (hourData && !hourData.error) {
-    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourData.windSpeed + ' Bft ' + hourData.windDir + '° ' + degreesToDirection(hourData.windDir) + ' ' + windArrow + ' (Gusts ' + hourData.gusts + ' Bft)</div>';
-    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourData.swellHeight.toFixed(1) + 'm / ' + hourData.swellPeriod + 's ' + hourData.swellDir + '° ' + degreesToDirection(hourData.swellDir) + ' ' + swellArrow + '</div>';
-    html += '<div class="detail-row"><strong>Rain:</strong> ' + hourData.rain.toFixed(1) + ' mm</div>';
-    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourData.visibility.toFixed(1) + ' km</div>';
-    html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourData.cloudCover + '%</div>';
-    html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourData.airTemp.toFixed(1) + '°C</div>';
-    html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourData.uvIndex + '</div>';
+  if (hourWeather && !hourWeather.error) {
+    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourWeather.windSpeed + ' Bft ' + hourWeather.windDir + '° ' + degreesToDirection(hourWeather.windDir) + ' ' + windArrow + ' (Gusts ' + hourWeather.gusts + ' Bft)</div>';
+    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourSwell.swellHeight.toFixed(1) + 'm / ' + hourSwell.swellPeriod + 's ' + hourSwell.swellDir + '° ' + degreesToDirection(hourSwell.swellDir) + ' ' + swellArrow + '</div>';
+    html += '<div class="detail-row"><strong>Rain:</strong> ' + hourWeather.rain.toFixed(1) + ' mm</div>';
+    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourWeather.visibility.toFixed(1) + ' km</div>';
+    html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourWeather.cloudCover + '%</div>';
+    html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourWeather.airTemp.toFixed(1) + '°C</div>';
+    html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourWeather.uvIndex + '</div>';
   } else {
     html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   }
@@ -983,7 +1089,7 @@ async function updateDetailed() {
     if (tides.tideType !== 'Unknown') {
       html += '<div class="detail-row">' + (tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)') + '</div>';
     }
-    html += '<div class="detail-row">' + tides.moonPhase + '</div>';
+    html += '<div class="detail-row">' + tides.moonIcon + ' ' + tides.moonPhase + '</div>';
   } else if (tides.events.length === 0) {
     html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
   }

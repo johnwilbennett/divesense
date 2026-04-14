@@ -20,14 +20,9 @@ export default {
         const WT_API_KEY = env.WORLDTIDES_API_KEY;
         
         if (!WT_API_KEY) {
-          return new Response(JSON.stringify({ 
-            error: 'API key not configured'
-          }), {
+          return new Response(JSON.stringify({ error: 'API key not configured' }), {
             status: 500,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
+            headers: { 'Content-Type': 'application/json' }
           });
         }
         
@@ -39,47 +34,24 @@ export default {
           });
         }
         
-        // Try v2 API which has better Spring/Neap support
-        const apiUrlV2 = `https://www.worldtides.info/api?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&datum=LAT&spring`;
+        // Request tide data - WorldTides API provides data up to 30+ days
+        const apiUrl = `https://www.worldtides.info/api/v3?extremes&height&date=${date}&lat=${coords.lat}&lon=${coords.lon}&key=${WT_API_KEY}&datum=LAT&timezone=UTC&spring`;
         
-        console.log(`Fetching tides for ${stationName} on ${date} using v2 API`);
-        
-        const response = await fetch(apiUrlV2);
-        
-        if (!response.ok) {
-          throw new Error(`WorldTides API returned ${response.status}`);
-        }
-        
+        const response = await fetch(apiUrl);
         const data = await response.json();
-        
-        // Log Spring/Neap data if available
-        if (data.spring !== undefined) {
-          console.log(`Spring/Neap detection: spring=${data.spring} (${data.spring === 1 ? 'Springs' : 'Neaps'})`);
-        } else {
-          console.log(`No spring data in response, will calculate from tidal range`);
-        }
         
         return new Response(JSON.stringify(data), {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
             'Cache-Control': 'public, max-age=21600'
           }
         });
         
       } catch (error) {
-        console.error('Error fetching from WorldTides:', error);
-        
-        return new Response(JSON.stringify({ 
-          error: 'Failed to fetch tide data',
-          message: error.message
-        }), {
+        return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
       }
     }
