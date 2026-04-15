@@ -1336,9 +1336,25 @@ if (maxDepthInput) {
 
 const whatsappBtn = document.getElementById('whatsappBtn');
 if (whatsappBtn) {
-  whatsappBtn.addEventListener('click', async function() {
+  whatsappBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
     const text = await getFormattedExportText();
-    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    const encodedText = encodeURIComponent(text);
+    
+    // Create an anchor element like the React approach
+    const whatsappLink = document.createElement('a');
+    whatsappLink.href = `https://wa.me/?text=${encodedText}`;
+    whatsappLink.target = '_blank';
+    whatsappLink.rel = 'noopener noreferrer';
+    
+    // Style it as a button (optional, makes it look like a click)
+    whatsappLink.style.display = 'inline-block';
+    whatsappLink.style.textDecoration = 'none';
+    
+    // Append, click, remove - preserves user gesture
+    document.body.appendChild(whatsappLink);
+    whatsappLink.click();
+    document.body.removeChild(whatsappLink);
   });
 }
 
