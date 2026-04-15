@@ -19,10 +19,11 @@ body {
   width: 100%;
 }
 
+/* Header section - reduced spacing */
 header {
   text-align: center;
-  padding: 22px 0 20px;
-  margin-bottom: 22px;
+  padding: 10px 0 5px;
+  margin-bottom: 5px;
 }
 
 .neon-title {
@@ -353,16 +354,22 @@ input[type="radio"] {
   letter-spacing: 2px;
 }
 
+/* LOCK SPINNERS HORIZONTALLY - Prevents horizontal movement on mobile */
 .spinner-wheel {
   height: 242px;
   width: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   scroll-snap-type: y mandatory;
   background: #01061a;
   border-radius: 18px;
   border: 1px solid #2FFFEF;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  outline: none;
+  position: relative;
 }
 
 .spinner-wheel::-webkit-scrollbar {
@@ -378,6 +385,11 @@ input[type="radio"] {
   color: #1AA7A7;
   cursor: pointer;
   transition: all 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .spinner-option.selected {
@@ -670,166 +682,6 @@ input[type="checkbox"] {
   100% { transform: scale(1); }
 }
 
-@media (max-width: 600px) {
-  .container {
-    padding: 0;
-  }
-  .card {
-    padding: 18px;
-  }
-  .station-card {
-    padding: 11px 20px;
-    min-width: 121px;
-  }
-  .time-spinner {
-    width: 72px;
-  }
-  .btn {
-    padding: 11px;
-    font-size: 12.1px;
-    min-width: 88px;
-  }
-  .hourly-card {
-    min-width: 150px;
-  }
-}
-/* Header Image - Full image visible, no cropping */
-.header-image-wrapper {
-  position: relative;
-  width: 100%;
-  border-radius: 24px;
-  overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  background: #020B24;
-}
-
-.header-bg-image {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.header-image-wrapper:hover .header-bg-image {
-  transform: scale(1.02);
-  transition: transform 0.5s ease;
-}
-
-.header-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, 
-    rgba(2, 11, 36, 0.4) 0%,
-    rgba(2, 11, 36, 0.2) 50%,
-    rgba(47, 255, 238, 0.1) 100%);
-  pointer-events: none;
-}
-
-/* Header Image - Full image visible, no cropping */
-.header-image-wrapper {
-  position: relative;
-  width: 100%;
-  border-radius: 24px;
-  overflow: hidden;
-  margin-bottom: 8px;  /* Reduced from 16px to close gap */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  background: #020B24;
-}
-
-.header-bg-image {
-  width: 100%;
-  height: auto;
-  display: block;
-  opacity: 0.78;  /* 22% fade (100% - 22% = 78%) */
-}
-
-.header-image-wrapper:hover .header-bg-image {
-  transform: scale(1.02);
-  transition: transform 0.5s ease;
-}
-
-.header-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, 
-    rgba(2, 11, 36, 0.3) 0%,
-    rgba(2, 11, 36, 0.15) 50%,
-    rgba(47, 255, 238, 0.05) 100%);
-  pointer-events: none;
-}
-
-/* Title section below image */
-.header-title-section {
-  text-align: center;
-  margin-top: 4px;
-  margin-bottom: 8px;  /* Reduced further */
-}
-
-.header-title-section .neon-title {
-  font-size: 14px;
-  margin: 0;
-  text-shadow: none;  /* REMOVED - was causing blur */
-  letter-spacing: 0.5px;
-  font-weight: 600;
-  color: #2FFFEF;  /* Added explicit color */
-}
-
-/* Style for the second part of the title */
-.header-title-section .neon-title .subtitle-part {
-  font-style: italic;
-  font-weight: normal;
-  font-size: 10.5px;
-  color: #00FFAA;  /* Slightly different color for distinction */
-  text-shadow: none;  /* Ensure no blur */
-}
-
-/* Mobile responsive */
-@media (max-width: 600px) {
-  .header-title-section .neon-title {
-    font-size: 12px;
-  }
-  .header-title-section .neon-title .subtitle-part {
-    font-size: 9px;
-  }
-}
-/* First card after header - reduce top margin */
-.card:first-of-type {
-  margin-top: 0;
-}
-
-/* Or specifically target the Station card */
-.card:first-child {
-  margin-top: 0;
-}
-header {
-  text-align: center;
-  padding: 10px 0 5px;  /* Reduced from 22px 0 20px */
-  margin-bottom: 5px;    /* Reduced from 22px */
-}
-/* Prevent any anchor/scroll behavior */
-html, body {
-  overflow-x: hidden;
-  scroll-behavior: auto !important;  /* Override smooth scroll */
-}
-
-/* Ensure spinner doesn't cause focus/scroll */
-.spinner-wheel {
-  scroll-snap-type: y mandatory;
-  outline: none;
-}
-/* Header section - reduced spacing */
-header {
-  text-align: center;
-  padding: 10px 0 5px;
-  margin-bottom: 5px;
-}
-
 /* Header Image */
 .header-image-wrapper {
   position: relative;
@@ -897,30 +749,36 @@ header {
 
 /* Mobile responsive */
 @media (max-width: 600px) {
+  .container {
+    padding: 0;
+  }
+  .card {
+    padding: 18px;
+  }
+  .station-card {
+    padding: 11px 20px;
+    min-width: 121px;
+  }
+  .time-spinner {
+    width: 72px;
+  }
+  .btn {
+    padding: 11px;
+    font-size: 12.1px;
+    min-width: 88px;
+  }
+  .hourly-card {
+    min-width: 150px;
+  }
   .header-title-section .neon-title {
     font-size: 12px;
   }
   .header-title-section .neon-title .subtitle-part {
     font-size: 9px;
   }
-  header {
-    padding: 5px 0 2px;
-  }
-}
-/* Prevent any auto-scroll to spinners */
-.spinner-wheel {
-  scroll-snap-type: y mandatory;
-  outline: none;
-  overflow-y: auto;
-  position: relative;
 }
 
-/* Prevent focus from causing scroll */
-.spinner-option:focus {
-  outline: none;
-}
-
-/* Ensure the container doesn't cause scroll */
+/* Ensure container doesn't cause scroll */
 .container {
   scroll-margin-top: 0;
 }
