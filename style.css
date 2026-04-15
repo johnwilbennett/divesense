@@ -787,3 +787,79 @@ input[type="checkbox"] {
 html {
   scroll-behavior: auto;
 }
+/* Smoother scrolling for spinners on web */
+.spinner-wheel {
+  height: 242px;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  background: #01061a;
+  border-radius: 18px;
+  border: 1px solid #2FFFEF;
+  scrollbar-width: thin;  /* Better for web */
+  -ms-overflow-style: none;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  outline: none;
+  position: relative;
+  scroll-behavior: smooth;  /* Adds smooth scrolling on web */
+}
+
+/* Custom scrollbar for web - more visible */
+.spinner-wheel::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
+.spinner-wheel::-webkit-scrollbar-track {
+  background: #0a1a2f;
+  border-radius: 10px;
+}
+
+.spinner-wheel::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #2FFFEF, #00FFAA);
+  border-radius: 10px;
+}
+
+/* Mobile: hide scrollbar but keep functionality */
+@media (max-width: 768px) {
+  .spinner-wheel::-webkit-scrollbar {
+    width: 0px;
+    display: none;
+  }
+  .spinner-wheel {
+    scrollbar-width: none;
+  }
+}
+
+.spinner-option {
+  scroll-snap-align: center;
+  text-align: center;
+  padding: 15.4px 0;
+  font-size: 19.8px;
+  font-family: monospace;
+  color: #1AA7A7;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.spinner-option.selected {
+  color: #2FFFEF;
+  text-shadow: 0 0 10px rgba(47, 255, 238, 0.8);
+  font-weight: bold;
+  background: rgba(47, 255, 238, 0.2);
+  transform: scale(1.08);
+  border-radius: 9px;
+}
+
+/* Improve scroll performance */
+.spinner-wheel {
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+}

@@ -727,7 +727,7 @@ function initStations() {
   }
 }
 
-// FIXED: Extended spinner values for smooth scrolling to edge values
+// FIXED: Extended spinner values with smooth scrolling and current time centered
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
@@ -790,10 +790,19 @@ function initTimeSpinners() {
     updateTimeLabel();
   }
   
+  // IMPROVED: Smoother scrolling with requestAnimationFrame
   let scrollTimeout;
+  let isScrolling = false;
   
   hourWheel.addEventListener('scroll', function() {
     if (scrollTimeout) clearTimeout(scrollTimeout);
+    
+    // Add smooth class during scroll
+    if (!isScrolling) {
+      isScrolling = true;
+      hourWheel.style.scrollBehavior = 'auto';
+    }
+    
     scrollTimeout = setTimeout(function() {
       const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
       let closest = null;
@@ -821,11 +830,18 @@ function initTimeSpinners() {
           updateHourly();
         }
       }
-    }, 30);
+      isScrolling = false;
+    }, 50);
   });
   
   minuteWheel.addEventListener('scroll', function() {
     if (scrollTimeout) clearTimeout(scrollTimeout);
+    
+    if (!isScrolling) {
+      isScrolling = true;
+      minuteWheel.style.scrollBehavior = 'auto';
+    }
+    
     scrollTimeout = setTimeout(function() {
       const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
       let closest = null;
@@ -853,10 +869,47 @@ function initTimeSpinners() {
           updateHourly();
         }
       }
-    }, 30);
+      isScrolling = false;
+    }, 50);
   });
   
   updateHighlights();
+  
+  // FIXED: Scroll to current time with smooth behavior and ensure it's centered
+  function scrollToCurrentValue() {
+    const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
+    const minuteOptions = document.querySelectorAll('#minuteWheel .spinner-option');
+    
+    // Enable smooth scrolling temporarily
+    hourWheel.style.scrollBehavior = 'smooth';
+    minuteWheel.style.scrollBehavior = 'smooth';
+    
+    // Scroll hour to current value
+    for (let i = 0; i < hourOptions.length; i++) {
+      if (parseInt(hourOptions[i].dataset.value) === currentHour) {
+        hourOptions[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
+        break;
+      }
+    }
+    
+    // Scroll minute to current value
+    for (let i = 0; i < minuteOptions.length; i++) {
+      if (parseInt(minuteOptions[i].dataset.value) === currentMinute) {
+        minuteOptions[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
+        break;
+      }
+    }
+    
+    // Reset scroll behavior after animation completes
+    setTimeout(function() {
+      hourWheel.style.scrollBehavior = 'auto';
+      minuteWheel.style.scrollBehavior = 'auto';
+    }, 500);
+  }
+  
+  // Use multiple timeouts to ensure DOM is fully rendered
+  setTimeout(scrollToCurrentValue, 100);
+  setTimeout(scrollToCurrentValue, 300);
 }
 
 function initDiveType() {
