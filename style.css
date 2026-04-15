@@ -890,3 +890,8 @@ html {
   backface-visibility: hidden;
   perspective: 1000px;
 }
+
+.btn-copy-wa {
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+}

@@ -1363,6 +1363,31 @@ if (whatsappBtn) {
   });
 }
 
+// Show iOS-specific button for iPhone users
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const copyForWhatsappBtn = document.getElementById('copyForWhatsappBtn');
+
+if (isIOS && copyForWhatsappBtn) {
+  copyForWhatsappBtn.style.display = 'block';
+  copyForWhatsappBtn.addEventListener('click', async function() {
+    const text = await getFormattedExportText();
+    await navigator.clipboard.writeText(text);
+    showNotification('✅ Plan copied! Open WhatsApp and paste.');
+  });
+  
+  // Also modify original WhatsApp button for iOS
+  const whatsappBtn = document.getElementById('whatsappBtn');
+  if (whatsappBtn) {
+    whatsappBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const text = await getFormattedExportText();
+      await navigator.clipboard.writeText(text);
+      showNotification('✅ Plan copied! Open WhatsApp and paste.');
+      window.location.href = 'whatsapp://';
+    });
+  }
+}
+
 const emailBtn = document.getElementById('emailBtn');
 if (emailBtn) {
   emailBtn.addEventListener('click', async function() {
