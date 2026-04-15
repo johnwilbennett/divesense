@@ -1345,47 +1345,23 @@ if (whatsappBtn) {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     if (isIOS) {
-      // For iOS: Use whatsapp:// scheme (works better for pre-filling)
-      // Also copy to clipboard as backup
+      // For iOS: Copy to clipboard first, then open WhatsApp
       await navigator.clipboard.writeText(text);
       
-      // Use the whatsapp:// scheme which pre-fills better on iOS
-      window.location.href = `whatsapp://send?text=${encodedText}`;
+      // Show confirmation before opening
+      const userConfirmed = confirm(
+        "✅ Dive plan copied to clipboard!\n\n" +
+        "Tap 'OK' to open WhatsApp, then paste the message."
+      );
       
-      // Fallback: If app doesn't open after 2 seconds, show instruction
-      setTimeout(() => {
-        showNotification('If WhatsApp doesn\'t open, paste the message manually');
-      }, 2000);
+      if (userConfirmed) {
+        window.location.href = "whatsapp://";
+      }
     } else {
-      // For Android/Desktop: Use web whatsapp
+      // For Android/Desktop: Use web whatsapp with pre-filled message
       window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     }
   });
-}
-
-// Show iOS-specific button for iPhone users
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-const copyForWhatsappBtn = document.getElementById('copyForWhatsappBtn');
-
-if (isIOS && copyForWhatsappBtn) {
-  copyForWhatsappBtn.style.display = 'block';
-  copyForWhatsappBtn.addEventListener('click', async function() {
-    const text = await getFormattedExportText();
-    await navigator.clipboard.writeText(text);
-    showNotification('✅ Plan copied! Open WhatsApp and paste.');
-  });
-  
-  // Also modify original WhatsApp button for iOS
-  const whatsappBtn = document.getElementById('whatsappBtn');
-  if (whatsappBtn) {
-    whatsappBtn.addEventListener('click', async function(e) {
-      e.preventDefault();
-      const text = await getFormattedExportText();
-      await navigator.clipboard.writeText(text);
-      showNotification('✅ Plan copied! Open WhatsApp and paste.');
-      window.location.href = 'whatsapp://';
-    });
-  }
 }
 
 const emailBtn = document.getElementById('emailBtn');
