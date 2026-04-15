@@ -863,3 +863,30 @@ html {
   -webkit-overflow-scrolling: touch;
   will-change: scroll-position;
 }
+/* Mobile-specific spinner optimizations */
+@media (max-width: 768px) {
+  .spinner-wheel {
+    height: 200px;  /* Slightly shorter for better mobile touch */
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  .spinner-option {
+    padding: 18px 0;  /* Larger touch target for mobile */
+    font-size: 22px;  /* Slightly larger for readability */
+  }
+}
+
+/* Ensure smooth scrolling on all devices */
+.spinner-wheel {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Force hardware acceleration for smoother scrolling */
+.spinner-wheel {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
