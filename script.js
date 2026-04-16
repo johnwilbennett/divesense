@@ -363,14 +363,15 @@ async function fetchRealTideData(station, date) {
   }
 }
 
-// REAL WEATHER DATA (wind, temp, etc.)
+// REAL WEATHER DATA (wind, temp, etc.) WITH SUNRISE/SUNSET
 async function fetchRealWeather(station, date) {
   try {
     const lat = station.lat;
     const lon = station.lon;
     const dateStr = formatDateForAPI(date);
     
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+    // Add daily parameters for sunrise/sunset
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&daily=sunrise,sunset&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
     
     const response = await fetch(weatherUrl);
     
@@ -413,7 +414,20 @@ async function fetchRealWeather(station, date) {
         uvIndex: data.hourly.uv_index[i] || 0
       });
     }
-    return hourly;
+    
+    // Extract sunrise and sunset times
+    let sunrise = null;
+    let sunset = null;
+    if (data.daily && data.daily.sunrise && data.daily.sunrise.length > 0) {
+      const sunriseUTC = new Date(data.daily.sunrise[0]);
+      const sunsetUTC = new Date(data.daily.sunset[0]);
+      
+      // Convert to local Irish time
+      sunrise = sunriseUTC.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Dublin' });
+      sunset = sunsetUTC.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Dublin' });
+    }
+    
+    return { hourly: hourly, sunrise: sunrise, sunset: sunset };
     
   } catch (error) {
     console.error("Error fetching weather:", error);
@@ -432,7 +446,7 @@ async function fetchRealWeather(station, date) {
         error: true
       });
     }
-    return emptyHourly;
+    return { hourly: emptyHourly, sunrise: null, sunset: null };
   }
 }
 
@@ -566,7 +580,8 @@ async function getFormattedExportText() {
   
   const timePrefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
   
-  const weather = await fetchRealWeather(currentStation, currentDate);
+  const weatherData = await fetchRealWeather(currentStation, currentDate);
+  const weather = weatherData.hourly;
   const swell = await fetchRealSwellData(currentStation, currentDate);
   let hourWeather = null;
   let hourSwell = null;
@@ -621,6 +636,13 @@ async function getFormattedExportText() {
   text += "High Water: " + (highWater ? highWater.time + " (" + highWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
   text += "Low Water: " + (lowWater ? lowWater.time + " (" + lowWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
   text += "Weather at Dive Time: " + weatherText + "\n";
+  
+  // Add sunrise and sunset to export
+  if (weatherData.sunrise && weatherData.sunset) {
+    text += "Sunrise: " + weatherData.sunrise + "\n";
+    text += "Sunset: " + weatherData.sunset + "\n";
+  }
+  
   text += "DOD: " + (dod || 'Not specified') + "\n";
   text += "Assistant DOD: " + (dodAsst || 'None') + "\n";
   text += "Cox: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
@@ -727,7 +749,6 @@ function initStations() {
   }
 }
 
-// FIXED: Extended spinner values with smooth scrolling and current time centered
 // FIXED: Extended spinner values with smooth scrolling and current time centered (Mobile + Desktop)
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
@@ -978,7 +999,8 @@ async function updateTides() {
 }
 
 async function updateHourly() {
-  const weather = await fetchRealWeather(currentStation, currentDate);
+  const weatherData = await fetchRealWeather(currentStation, currentDate);
+  const weather = weatherData.hourly;
   const swell = await fetchRealSwellData(currentStation, currentDate);
   const tides = await fetchRealTideData(currentStation, currentDate);
   const selectedHour = currentHour;
@@ -1057,7 +1079,8 @@ async function updateHourly() {
 }
 
 async function updateDetailed() {
-  const weather = await fetchRealWeather(currentStation, currentDate);
+  const weatherData = await fetchRealWeather(currentStation, currentDate);
+  const weather = weatherData.hourly;
   const swell = await fetchRealSwellData(currentStation, currentDate);
   const tides = await fetchRealTideData(currentStation, currentDate);
   const selectedHour = currentHour;
@@ -1122,6 +1145,12 @@ async function updateDetailed() {
     html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourWeather.cloudCover + '%</div>';
     html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourWeather.airTemp.toFixed(1) + '°C</div>';
     html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourWeather.uvIndex + '</div>';
+    
+    // Add sunrise and sunset to detailed conditions
+    if (weatherData.sunrise && weatherData.sunset) {
+      html += '<div class="detail-row"><strong>Sunrise:</strong> ' + weatherData.sunrise + '</div>';
+      html += '<div class="detail-row"><strong>Sunset:</strong> ' + weatherData.sunset + '</div>';
+    }
   } else {
     html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   }
