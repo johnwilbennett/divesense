@@ -690,7 +690,7 @@ async function getFormattedExportText() {
     
     // Show Boat Departure for Boat dives
     const boatDeparture = document.getElementById('boatDeparture') ? document.getElementById('boatDeparture').value : '';
-    text += "Boat Departure: " + (boatDeparture || 'Not specified') + "\n";
+    text += "Boat Departure Location: " + (boatDeparture || 'Not specified') + "\n";
   } else {
     // Show Kitted Brief Location for Shore dives
     const kittedBriefLocation = document.getElementById('kittedBriefLocation') ? document.getElementById('kittedBriefLocation').value : '';
