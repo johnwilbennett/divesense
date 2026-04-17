@@ -81,36 +81,47 @@
     </section>
 
     <!-- Crew & Admin -->
-    <section class="card">
-      <div class="card-title">Crew & Admin</div>
-      
-      <input type="text" id="diveSite" placeholder="Dive Site Name" class="form-input">
-      
-      <div class="row">
-        <input type="text" id="dod" placeholder="DOD (required)" class="form-input">
-        <input type="text" id="dodAsst" placeholder="Assistant (optional)" class="form-input">
-      </div>
-      
-      <div class="radio-group participation-group">
-        <label><input type="radio" name="participation" value="Open to All" checked> Open to All</label>
-        <label><input type="radio" name="participation" value="Restricted to D2+"> Restricted to D2+</label>
-      </div>
-      
-      <input type="number" id="maxDepth" placeholder="Max Depth (m)" class="form-input" min="5" max="45">
-      
-      <div id="coxField">
-        <input type="text" id="coxName" placeholder="Cox'n Name(s)" class="form-input">
-        <div class="radio-group cox-group">
-          <label><input type="radio" name="coxMode" value="Dedicated"> Dedicated Cox'n</label>
-          <label><input type="radio" name="coxMode" value="Split"> Split Cox'n</label>
-        </div>
-      </div>
-      
-      <div class="checkbox-group">
-        <label><input type="checkbox" id="torches"> Torches Required</label>
-        <label><input type="checkbox" id="lifeJackets" checked> Life Jackets Required</label>
-      </div>
-    </section>
+<section class="card">
+  <div class="card-title">Crew & Admin</div>
+  
+  <input type="text" id="diveSite" placeholder="Dive Site Name" class="form-input">
+  
+  <div class="row">
+    <input type="text" id="dod" placeholder="DOD (required)" class="form-input">
+    <input type="text" id="dodAsst" placeholder="Assistant (optional)" class="form-input">
+  </div>
+  
+  <div class="radio-group participation-group">
+    <label><input type="radio" name="participation" value="Open to All" checked> Open to All</label>
+    <label><input type="radio" name="participation" value="Restricted to D2+"> Restricted to D2+</label>
+  </div>
+  
+  <input type="number" id="maxDepth" placeholder="Max Depth (m)" class="form-input" min="5" max="45">
+  
+  <!-- Cox'n Field - Only visible for Boat dives -->
+  <div id="coxField">
+    <input type="text" id="coxName" placeholder="Cox'n Name(s)" class="form-input">
+    <div class="radio-group cox-group">
+      <label><input type="radio" name="coxMode" value="Dedicated"> Dedicated Cox'n</label>
+      <label><input type="radio" name="coxMode" value="Split"> Split Cox'n</label>
+    </div>
+  </div>
+  
+  <!-- Boat Departure Location - Only visible for Boat dives -->
+  <div id="boatDepartureField" style="display: none;">
+    <input type="text" id="boatDeparture" placeholder="Boat Departure Location" class="form-input">
+  </div>
+  
+  <!-- Kitted Brief Location - Only visible for Shore dives -->
+  <div id="kittedBriefField" style="display: none;">
+    <input type="text" id="kittedBriefLocation" placeholder="Kitted Brief Location" class="form-input">
+  </div>
+  
+  <div class="checkbox-group">
+    <label><input type="checkbox" id="torches"> Torches Required</label>
+    <label><input type="checkbox" id="lifeJackets" checked> Life Jackets Required</label>
+  </div>
+</section>
 
     <!-- Dive Categories -->
     <section class="card">

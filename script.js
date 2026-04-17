@@ -211,10 +211,16 @@ function saveUserPreferences() {
       break;
     }
   }
+  
+  const boatDeparture = document.getElementById('boatDeparture') ? document.getElementById('boatDeparture').value : '';
+  const kittedBriefLocation = document.getElementById('kittedBriefLocation') ? document.getElementById('kittedBriefLocation').value : '';
+  
   const preferences = {
     stationName: currentStation.name,
     diveType: diveType,
-    selectedChips: Array.from(selectedChips)
+    selectedChips: Array.from(selectedChips),
+    boatDeparture: boatDeparture,
+    kittedBriefLocation: kittedBriefLocation
   };
   localStorage.setItem('divesense_preferences', JSON.stringify(preferences));
 }
@@ -236,6 +242,14 @@ function loadUserPreferences() {
     }
     if (prefs.selectedChips) {
       prefs.selectedChips.forEach(function(chip) { selectedChips.add(chip); });
+    }
+    
+    // Restore new fields
+    if (prefs.boatDeparture && document.getElementById('boatDeparture')) {
+      document.getElementById('boatDeparture').value = prefs.boatDeparture;
+    }
+    if (prefs.kittedBriefLocation && document.getElementById('kittedBriefLocation')) {
+      document.getElementById('kittedBriefLocation').value = prefs.kittedBriefLocation;
     }
   }
 }
@@ -673,6 +687,14 @@ async function getFormattedExportText() {
   // Only show Cox field for Boat dives
   if (diveType === 'Boat') {
     text += "Cox'n: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
+    
+    // Show Boat Departure for Boat dives
+    const boatDeparture = document.getElementById('boatDeparture') ? document.getElementById('boatDeparture').value : '';
+    text += "Boat Departure: " + (boatDeparture || 'Not specified') + "\n";
+  } else {
+    // Show Kitted Brief Location for Shore dives
+    const kittedBriefLocation = document.getElementById('kittedBriefLocation') ? document.getElementById('kittedBriefLocation').value : '';
+    text += "Kitted Brief Location: " + (kittedBriefLocation || 'Not specified') + "\n";
   }
   
   // Update participation text
@@ -979,25 +1001,47 @@ function initTimeSpinners() {
   });
 }
 
+// UPDATED: Show/hide fields based on dive type (Boat vs Shore)
 function initDiveType() {
   const radios = document.querySelectorAll('input[name="diveType"]');
   const coxField = document.getElementById('coxField');
+  const boatDepartureField = document.getElementById('boatDepartureField');
+  const kittedBriefField = document.getElementById('kittedBriefField');
+  const lifeJackets = document.getElementById('lifeJackets');
   
   for (let i = 0; i < radios.length; i++) {
     radios[i].addEventListener('change', function(e) {
+      const isBoat = e.target.value === 'Boat';
+      
+      // Show/hide Cox field
       if (coxField) {
-        coxField.style.display = e.target.value === 'Boat' ? 'block' : 'none';
+        coxField.style.display = isBoat ? 'block' : 'none';
       }
-      const lifeJackets = document.getElementById('lifeJackets');
+      
+      // Show/hide Boat Departure field (only for Boat)
+      if (boatDepartureField) {
+        boatDepartureField.style.display = isBoat ? 'block' : 'none';
+      }
+      
+      // Show/hide Kitted Brief Location field (only for Shore)
+      if (kittedBriefField) {
+        kittedBriefField.style.display = isBoat ? 'none' : 'block';
+      }
+      
+      // Life Jackets default: ON for Boat, OFF for Shore
       if (lifeJackets) {
-        lifeJackets.checked = e.target.value === 'Boat';
+        lifeJackets.checked = isBoat;
       }
+      
       updateTimeLabel();
       saveUserPreferences();
     });
   }
   
+  // Set initial state (default is Boat)
   if (coxField) coxField.style.display = 'block';
+  if (boatDepartureField) boatDepartureField.style.display = 'block';
+  if (kittedBriefField) kittedBriefField.style.display = 'none';
   updateTimeLabel();
 }
 
