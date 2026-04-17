@@ -619,9 +619,16 @@ async function getFormattedExportText() {
   const windArrow = getWindArrow(hourWeather.windDir);
   const swellArrow = getSwellArrow(hourSwell.swellDir);
   
+  // Build weather text with each item on its own line
   let weatherText = '';
   if (hourWeather && !hourWeather.error) {
-    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + ", Gusts: " + hourWeather.gusts + " Bft, Swell: " + hourSwell.swellHeight.toFixed(1) + "m / " + hourSwell.swellPeriod + "s " + hourSwell.swellDir + "° " + degreesToDirection(hourSwell.swellDir) + " " + swellArrow + ", Visibility: " + hourWeather.visibility.toFixed(1) + "km, Rain: " + hourWeather.rain.toFixed(1) + "mm, Temp: " + hourWeather.airTemp.toFixed(1) + "°C";
+    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + " (Gusts " + hourWeather.gusts + " Bft)\n";
+    weatherText += "   Swell: " + hourSwell.swellHeight.toFixed(1) + "m / " + hourSwell.swellPeriod + "s " + hourSwell.swellDir + "° " + degreesToDirection(hourSwell.swellDir) + " " + swellArrow + "\n";
+    weatherText += "   Visibility: " + hourWeather.visibility.toFixed(1) + " km\n";
+    weatherText += "   Rain: " + hourWeather.rain.toFixed(1) + " mm\n";
+    weatherText += "   Cloud Cover: " + hourWeather.cloudCover + "%\n";
+    weatherText += "   Air Temp: " + hourWeather.airTemp.toFixed(1) + "°C\n";
+    weatherText += "   UV Index: " + hourWeather.uvIndex;
   } else {
     weatherText = 'Weather data unavailable';
   }
@@ -634,12 +641,11 @@ async function getFormattedExportText() {
   text += "📅 DATE & TIME\n";
   text += "─────────────────────────────────\n";
   text += "Date: " + formatDateDisplay(currentDate) + "\n";
-  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n";
-  text += "Timezone: " + getIrishTimezone() + "\n\n";
+  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n\n";
   
   text += "📍 LOCATION\n";
   text += "─────────────────────────────────\n";
-  text += "Station: " + currentStation.name + "\n";
+  text += "Base Station: " + currentStation.name + "\n";
   text += "Coordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
   text += "Google Maps: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
   text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
@@ -654,7 +660,7 @@ async function getFormattedExportText() {
   text += "─────────────────────────────────\n";
   text += weatherText + "\n";
   if (weatherData.sunrise && weatherData.sunset) {
-    text += "Sunrise: " + weatherData.sunrise + "\n";
+    text += "\nSunrise: " + weatherData.sunrise + "\n";
     text += "Sunset: " + weatherData.sunset + "\n";
   }
   text += "\n";
@@ -669,7 +675,14 @@ async function getFormattedExportText() {
     text += "Cox'n: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
   }
   
-  text += "Participation: " + participation + "\n";
+  // Update participation text
+  let participationText = participation;
+  if (participation === "Open to All") {
+    participationText = "Open to All (with appropriate buddy pairs)";
+  } else if (participation === "Restricted to D2+") {
+    participationText = "Restricted to D2+ (with appropriate buddy pairs)";
+  }
+  text += "Participation: " + participationText + "\n";
   text += "Max Depth: " + (maxDepth || 'N/A') + "m\n\n";
   
   text += "⚙️ EQUIPMENT & CATEGORIES\n";
