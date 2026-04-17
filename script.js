@@ -626,32 +626,67 @@ async function getFormattedExportText() {
     weatherText = 'Weather data unavailable';
   }
   
-  let text = "Date: " + formatDateDisplay(currentDate) + "\n";
-  text += "Station Name: " + currentStation.name + "\n";
-  text += "Station Map Co-ordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
-  text += "Google Maps Link: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
-  text += "Dive Site Name: " + (diveSite || 'Not specified') + "\n";
-  text += "Dive Type: " + diveType + "\n";
-  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n";
-  text += "High Water: " + (highWater ? highWater.time + " (" + highWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
-  text += "Low Water: " + (lowWater ? lowWater.time + " (" + lowWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
-  text += "Weather at Dive Time: " + weatherText + "\n";
+  // Build the export text with nice formatting
+  let text = "═══════════════════════════════════\n";
+  text += "        🌊 DIVESENSE DIVE PLAN 🌊\n";
+  text += "═══════════════════════════════════\n\n";
   
-  // Add sunrise and sunset to export
+  text += "📅 DATE & TIME\n";
+  text += "─────────────────────────────────\n";
+  text += "Date: " + formatDateDisplay(currentDate) + "\n";
+  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n";
+  text += "Timezone: " + getIrishTimezone() + "\n\n";
+  
+  text += "📍 LOCATION\n";
+  text += "─────────────────────────────────\n";
+  text += "Station: " + currentStation.name + "\n";
+  text += "Coordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
+  text += "Google Maps: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
+  text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
+  text += "Dive Type: " + diveType + "\n\n";
+  
+  text += "🌊 TIDES\n";
+  text += "─────────────────────────────────\n";
+  text += "High Water: " + (highWater ? highWater.time + " (" + highWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
+  text += "Low Water: " + (lowWater ? lowWater.time + " (" + lowWater.height.toFixed(2) + "m)" : 'N/A') + "\n\n";
+  
+  text += "🌡️ CONDITIONS AT DIVE TIME\n";
+  text += "─────────────────────────────────\n";
+  text += weatherText + "\n";
   if (weatherData.sunrise && weatherData.sunset) {
     text += "Sunrise: " + weatherData.sunrise + "\n";
     text += "Sunset: " + weatherData.sunset + "\n";
   }
+  text += "\n";
   
+  text += "👥 CREW\n";
+  text += "─────────────────────────────────\n";
   text += "DOD: " + (dod || 'Not specified') + "\n";
   text += "Assistant DOD: " + (dodAsst || 'None') + "\n";
-  text += "Cox: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
+  
+  // Only show Cox field for Boat dives
+  if (diveType === 'Boat') {
+    text += "Cox'n: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
+  }
+  
   text += "Participation: " + participation + "\n";
-  text += "Max Depth: " + (maxDepth || 'N/A') + "m\n";
-  if (torches) text += "Torches Required: ✓\n";
-  if (lifeJackets) text += "Life Jackets Required: ✓\n";
-  text += "Dive Categories: " + (categories || 'None selected') + "\n";
-  text += "\n---\nCreated with DiveSense - Always verify with official sources";
+  text += "Max Depth: " + (maxDepth || 'N/A') + "m\n\n";
+  
+  text += "⚙️ EQUIPMENT & CATEGORIES\n";
+  text += "─────────────────────────────────\n";
+  if (torches) text += "✓ Torches Required\n";
+  if (lifeJackets) text += "✓ Life Jackets Required\n";
+  text += "Dive Categories: " + (categories || 'None selected') + "\n\n";
+  
+  text += "═══════════════════════════════════\n";
+  text += "📚 DIVE BUDDIES, GRADES & DEPTHS\n";
+  text += "═══════════════════════════════════\n";
+  text += "Please see: https://sites.google.com/diving.ie/trainingdocuments/home\n";
+  text += "for DIVE BUDDIES, GRADES AND MAXIMUM DEPTHS\n\n";
+  
+  text += "─────────────────────────────────\n";
+  text += "⚠️ Always verify with official sources\n";
+  text += "Created with DiveSense - Dive Planning Tool\n";
   
   return text;
 }
