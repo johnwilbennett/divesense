@@ -1,0 +1,7 @@
+/divelogic/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+
+/divelogic
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
