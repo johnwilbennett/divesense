@@ -716,12 +716,12 @@ async function getFormattedExportText() {
   text += "═══════════════════════════════════\n";
   text += "📚 DIVE BUDDIES, GRADES & DEPTHS\n";
   text += "═══════════════════════════════════\n";
-  text += "Please see: https://sites.google.com/diving.ie/trainingdocuments/home\n";
+  text += "Please see: https://drive.google.com/drive/folders/139b1VxbTvLtw-i1fd7CBdL_MhM5mCDdW?usp=sharing\n";
   text += "for DIVE BUDDIES, GRADES AND MAXIMUM DEPTHS\n\n";
   
   text += "─────────────────────────────────\n";
   text += "⚠️ Always verify with official sources\n";
-  text += "Created with DiveSense - Dive Planning Tool\n";
+  text += "Created with DiveSense - Dive Planning tool available on https://www.sultansofsurf.com\n";
   
   return text;
 }
