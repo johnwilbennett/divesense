@@ -79,14 +79,7 @@ function getIrishTimezone() {
 }
 
 function convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC) {
-  const utcTimestamp = Date.UTC(
-    tideDateUTC.getUTCFullYear(),
-    tideDateUTC.getUTCMonth(),
-    tideDateUTC.getUTCDate(),
-    utcHour,
-    utcMinute,
-    0
-  );
+  const utcTimestamp = Date.UTC(tideDateUTC.getUTCFullYear(), tideDateUTC.getUTCMonth(), tideDateUTC.getUTCDate(), utcHour, utcMinute, 0);
   const localDate = new Date(utcTimestamp);
   const localHour = localDate.getHours();
   const localMinute = localDate.getMinutes();
@@ -238,7 +231,7 @@ function loadSavedPlans() {
   renderSavedPlans();
 }
 
-// REAL TIDE DATA
+// REAL TIDE DATA – FIXED: filter based on LOCAL date, not UTC
 async function fetchRealTideData(station, date) {
   const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
@@ -271,19 +264,35 @@ async function fetchRealTideData(station, date) {
     } else {
       tideType = getTideTypeFromMoonPhase(date);
     }
+
+    // --- FIX: Use local date for filtering ---
+    // Instead of comparing UTC date, we convert each tide to local Irish time,
+    // and keep only those whose local date matches the selected date.
     const selectedYear = date.getFullYear();
     const selectedMonth = date.getMonth();
     const selectedDay = date.getDate();
-    const selectedDateStart = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 0, 0, 0));
-    const selectedDateEnd = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, 23, 59, 59));
+
     let tideEvents = [];
     for (let i = 0; i < data.extremes.length; i++) {
       const extreme = data.extremes[i];
       const tideDateUTC = new Date(extreme.dt * 1000);
-      if (tideDateUTC >= selectedDateStart && tideDateUTC <= selectedDateEnd) {
-        const utcHour = tideDateUTC.getUTCHours();
-        const utcMinute = tideDateUTC.getUTCMinutes();
-        const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
+      const utcHour = tideDateUTC.getUTCHours();
+      const utcMinute = tideDateUTC.getUTCMinutes();
+      const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
+      // Build a local date object from the converted local hour/minute and the original UTC date components
+      // (we only need the local date to compare year/month/day)
+      const localDateObj = new Date(Date.UTC(
+        tideDateUTC.getUTCFullYear(),
+        tideDateUTC.getUTCMonth(),
+        tideDateUTC.getUTCDate(),
+        localTime.hour,
+        localTime.minute,
+        0
+      ));
+      // Convert to local date string in Ireland timezone
+      const localDateStr = localDateObj.toLocaleDateString('en-GB', { timeZone: 'Europe/Dublin' });
+      const selectedDateStr = `${selectedDay.toString().padStart(2,'0')}/${(selectedMonth+1).toString().padStart(2,'0')}/${selectedYear}`;
+      if (localDateStr === selectedDateStr) {
         tideEvents.push({
           type: extreme.type === "High" ? "High" : "Low",
           time: localTime.timeStr,
@@ -292,26 +301,7 @@ async function fetchRealTideData(station, date) {
         });
       }
     }
-    if (tideEvents.length === 0 && data.extremes && data.extremes.length > 0) {
-      for (let i = 0; i < data.extremes.length; i++) {
-        const extreme = data.extremes[i];
-        const tideDateUTC = new Date(extreme.dt * 1000);
-        const utcHour = tideDateUTC.getUTCHours();
-        const utcMinute = tideDateUTC.getUTCMinutes();
-        const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
-        const localDate = new Date(Date.UTC(selectedYear, selectedMonth, selectedDay, localTime.hour, localTime.minute, 0));
-        if (localDate.getUTCFullYear() === selectedYear &&
-            localDate.getUTCMonth() === selectedMonth &&
-            localDate.getUTCDate() === selectedDay) {
-          tideEvents.push({
-            type: extreme.type === "High" ? "High" : "Low",
-            time: localTime.timeStr,
-            height: extreme.height,
-            timestamp: extreme.dt * 1000
-          });
-        }
-      }
-    }
+
     tideEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
     const tideData = {
       events: tideEvents,
@@ -469,11 +459,10 @@ function getSwellArrow(swellDirDeg) {
   return getWindArrow(swellDirDeg); // same mapping
 }
 
-// ======================== FIXED TIDE DIRECTION LOGIC ========================
+// ======================== ROBUST TIDE DIRECTION LOGIC ========================
 function getTideDirection(tideEvents, hour) {
   if (!tideEvents || tideEvents.length === 0) return "No Data";
 
-  // convert all tide times to minutes since midnight (local time)
   const tides = tideEvents.map(t => {
     const parts = t.time.split(':');
     return { type: t.type, minutes: parseInt(parts[0]) * 60 + parseInt(parts[1]) };
@@ -510,8 +499,6 @@ function getTideDirection(tideEvents, hour) {
     if (prev.type === "High" && next.type === "Low") return "Ebbing 🌊⬇️";
     if (prev.type === "Low" && next.type === "High") return "Flooding 🌊⬆️";
   }
-
-  // Fallback (should never happen if data is consistent)
   return "No Data";
 }
 // ===========================================================================
@@ -1031,17 +1018,12 @@ async function updateHourly() {
     return;
   }
 
-  // Use the fixed tide direction function
-  function getTideDirectionForHour(tideEvents, hour) {
-    return getTideDirection(tideEvents, hour);
-  }
-
   let html = '';
   for (let i = 0; i < weather.length; i++) {
     const hour = weather[i];
     const swellHour = swell.find(s => s.time === hour.time) || { swellHeight: 0.5, swellPeriod: 5, swellDir: 0 };
     const hourNum = parseInt(hour.time);
-    const tideDirection = getTideDirectionForHour(tides.events, hourNum);
+    const tideDirection = getTideDirection(tides.events, hourNum);
     let tideIcon = '';
     if (tideDirection.includes('Flooding')) tideIcon = '⬆️';
     else if (tideDirection.includes('Ebbing')) tideIcon = '⬇️';
@@ -1090,9 +1072,7 @@ async function updateDetailed() {
 
   const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
 
-  // Use the same logic for detailed view
   let tideDirection = getTideDirection(tides.events, selectedHour);
-  // Convert to more detailed text if needed (same as before)
   if (tideDirection === "Flooding 🌊⬆️") tideDirection = "Flooding (Incoming) 🌊⬆️";
   else if (tideDirection === "Ebbing 🌊⬇️") tideDirection = "Ebbing (Outgoing) 🌊⬇️";
   else if (tideDirection === "Slack Water ⚡") tideDirection = "Slack Water ⚡";
@@ -1123,7 +1103,6 @@ async function updateDetailed() {
     html += '<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>';
   }
 
-  // Find previous and next tide for "Relevant tides" section
   let prevTide = null;
   let nextTide = null;
   const targetMinutes = selectedHour * 60 + selectedMinute;
