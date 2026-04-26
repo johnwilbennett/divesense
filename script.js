@@ -1,14 +1,10 @@
 // IMMEDIATE SCROLL PREVENTION - Runs before anything else
 (function() {
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-  }
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);
   document.addEventListener('DOMContentLoaded', function() {
     window.scrollTo(0, 0);
-    if (document.activeElement && document.activeElement.blur) {
-      document.activeElement.blur();
-    }
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   });
 })();
 
@@ -142,54 +138,28 @@ function updateTimeLabel() {
   const timeLabel = document.getElementById('timeLabel');
   const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
   let diveType = "Boat";
-  for (let i = 0; i < diveTypeRadios.length; i++) {
-    if (diveTypeRadios[i].checked) {
-      diveType = diveTypeRadios[i].value;
-      break;
-    }
-  }
+  for (let r of diveTypeRadios) if (r.checked) { diveType = r.value; break; }
   const prefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
-  const timezone = getIrishTimezone();
-  if (timeLabel) {
-    timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span> <span style="color: #1AA7A7; font-size: 10px;">(' + timezone + ')</span>';
-  }
+  const tz = getIrishTimezone();
+  if (timeLabel) timeLabel.innerHTML = prefix + ': <span style="color: #2FFFEF; font-weight: bold;">' + getSelectedTime() + '</span> <span style="color: #1AA7A7; font-size: 10px;">(' + tz + ')</span>';
 }
 
 function hapticFeedback() {
-  const element = document.activeElement;
-  if (element) {
-    element.classList.add('haptic-feedback');
-    setTimeout(function() { element.classList.remove('haptic-feedback'); }, 100);
-  }
+  const el = document.activeElement;
+  if (el) { el.classList.add('haptic-feedback'); setTimeout(() => el.classList.remove('haptic-feedback'), 100); }
 }
-
-function showLoading() {
-  const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.style.display = 'flex';
-}
-
-function hideLoading() {
-  const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.style.display = 'none';
-}
+function showLoading() { const ov = document.getElementById('loadingOverlay'); if (ov) ov.style.display = 'flex'; }
+function hideLoading() { const ov = document.getElementById('loadingOverlay'); if (ov) ov.style.display = 'none'; }
 
 function saveUserPreferences() {
   const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
   let diveType = "Boat";
-  for (let i = 0; i < diveTypeRadios.length; i++) {
-    if (diveTypeRadios[i].checked) {
-      diveType = diveTypeRadios[i].value;
-      break;
-    }
-  }
+  for (let r of diveTypeRadios) if (r.checked) { diveType = r.value; break; }
   const boatDeparture = document.getElementById('boatDeparture') ? document.getElementById('boatDeparture').value : '';
   const kittedBriefLocation = document.getElementById('kittedBriefLocation') ? document.getElementById('kittedBriefLocation').value : '';
   const preferences = {
-    stationName: currentStation.name,
-    diveType: diveType,
-    selectedChips: Array.from(selectedChips),
-    boatDeparture: boatDeparture,
-    kittedBriefLocation: kittedBriefLocation
+    stationName: currentStation.name, diveType, selectedChips: Array.from(selectedChips),
+    boatDeparture, kittedBriefLocation
   };
   localStorage.setItem('divesense_preferences', JSON.stringify(preferences));
 }
@@ -198,111 +168,65 @@ function loadUserPreferences() {
   const saved = localStorage.getItem('divesense_preferences');
   if (saved) {
     const prefs = JSON.parse(saved);
-    const savedStation = stations.find(function(s) { return s.name === prefs.stationName; });
+    const savedStation = stations.find(s => s.name === prefs.stationName);
     if (savedStation) currentStation = savedStation;
     if (prefs.diveType) {
       const radios = document.querySelectorAll('input[name="diveType"]');
-      for (let i = 0; i < radios.length; i++) {
-        if (radios[i].value === prefs.diveType) {
-          radios[i].checked = true;
-          break;
-        }
-      }
+      for (let r of radios) if (r.value === prefs.diveType) r.checked = true;
     }
-    if (prefs.selectedChips) {
-      prefs.selectedChips.forEach(function(chip) { selectedChips.add(chip); });
-    }
-    if (prefs.boatDeparture && document.getElementById('boatDeparture')) {
-      document.getElementById('boatDeparture').value = prefs.boatDeparture;
-    }
-    if (prefs.kittedBriefLocation && document.getElementById('kittedBriefLocation')) {
-      document.getElementById('kittedBriefLocation').value = prefs.kittedBriefLocation;
-    }
+    if (prefs.selectedChips) prefs.selectedChips.forEach(chip => selectedChips.add(chip));
+    if (prefs.boatDeparture && document.getElementById('boatDeparture')) document.getElementById('boatDeparture').value = prefs.boatDeparture;
+    if (prefs.kittedBriefLocation && document.getElementById('kittedBriefLocation')) document.getElementById('kittedBriefLocation').value = prefs.kittedBriefLocation;
   }
 }
 
 let savedPlans = [];
+function loadSavedPlans() { const s = localStorage.getItem('divesense_plans'); if (s) savedPlans = JSON.parse(s); renderSavedPlans(); }
 
-function loadSavedPlans() {
-  const saved = localStorage.getItem('divesense_plans');
-  if (saved) {
-    savedPlans = JSON.parse(saved);
-  }
-  renderSavedPlans();
-}
-
-// REAL TIDE DATA – FIXED: filter based on LOCAL date, not UTC
+// REAL TIDE DATA – FILTERED BY LOCAL DATE
 async function fetchRealTideData(station, date) {
   const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
   if (tideCache.has(cacheKey)) {
     const cached = tideCache.get(cacheKey);
-    if (now - cached.timestamp < 21600000) {
-      return cached.data;
-    } else {
-      tideCache.delete(cacheKey);
-    }
+    if (now - cached.timestamp < 21600000) return cached.data;
+    else tideCache.delete(cacheKey);
   }
   try {
     const formattedDate = formatDateForAPI(date);
     const apiUrl = "/api/tides?station=" + station.worldtidesId + "&date=" + formattedDate;
     const response = await fetch(apiUrl);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    if (data.error) {
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
-    }
-    if (!data.extremes || data.extremes.length === 0) {
-      return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
-    }
+    if (data.error || !data.extremes || !data.extremes.length) return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
     let tideType = "Unknown";
-    if (data.spring !== undefined) {
-      tideType = data.spring === 1 ? "Springs" : "Neaps";
-    } else {
-      tideType = getTideTypeFromMoonPhase(date);
-    }
+    if (data.spring !== undefined) tideType = data.spring === 1 ? "Springs" : "Neaps";
+    else tideType = getTideTypeFromMoonPhase(date);
 
-    // --- FIX: Use local date for filtering ---
-    // Instead of comparing UTC date, we convert each tide to local Irish time,
-    // and keep only those whose local date matches the selected date.
     const selectedYear = date.getFullYear();
     const selectedMonth = date.getMonth();
     const selectedDay = date.getDate();
+    const selectedDateStr = `${selectedDay.toString().padStart(2,'0')}/${(selectedMonth+1).toString().padStart(2,'0')}/${selectedYear}`;
 
     let tideEvents = [];
-    for (let i = 0; i < data.extremes.length; i++) {
-      const extreme = data.extremes[i];
-      const tideDateUTC = new Date(extreme.dt * 1000);
-      const utcHour = tideDateUTC.getUTCHours();
-      const utcMinute = tideDateUTC.getUTCMinutes();
-      const localTime = convertUTCToIrishTime(utcHour, utcMinute, tideDateUTC);
-      // Build a local date object from the converted local hour/minute and the original UTC date components
-      // (we only need the local date to compare year/month/day)
+    for (let extreme of data.extremes) {
+      const tideUTC = new Date(extreme.dt * 1000);
+      const local = convertUTCToIrishTime(tideUTC.getUTCHours(), tideUTC.getUTCMinutes(), tideUTC);
       const localDateObj = new Date(Date.UTC(
-        tideDateUTC.getUTCFullYear(),
-        tideDateUTC.getUTCMonth(),
-        tideDateUTC.getUTCDate(),
-        localTime.hour,
-        localTime.minute,
-        0
+        tideUTC.getUTCFullYear(), tideUTC.getUTCMonth(), tideUTC.getUTCDate(),
+        local.hour, local.minute, 0
       ));
-      // Convert to local date string in Ireland timezone
       const localDateStr = localDateObj.toLocaleDateString('en-GB', { timeZone: 'Europe/Dublin' });
-      const selectedDateStr = `${selectedDay.toString().padStart(2,'0')}/${(selectedMonth+1).toString().padStart(2,'0')}/${selectedYear}`;
       if (localDateStr === selectedDateStr) {
         tideEvents.push({
           type: extreme.type === "High" ? "High" : "Low",
-          time: localTime.timeStr,
+          time: local.timeStr,
           height: extreme.height,
           timestamp: extreme.dt * 1000
         });
       }
     }
-
-    tideEvents.sort(function(a, b) { return a.timestamp - b.timestamp; });
+    tideEvents.sort((a,b) => a.timestamp - b.timestamp);
     const tideData = {
       events: tideEvents,
       moonPhase: getMoonPhase(date),
@@ -321,187 +245,128 @@ async function fetchRealTideData(station, date) {
 // REAL WEATHER DATA (wind, temp, etc.) WITH SUNRISE/SUNSET
 async function fetchRealWeather(station, date) {
   try {
-    const lat = station.lat;
-    const lon = station.lon;
-    const dateStr = formatDateForAPI(date);
+    const lat = station.lat, lon = station.lon, dateStr = formatDateForAPI(date);
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,rain,cloudcover,temperature_2m,uv_index&daily=sunrise,sunset&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
-    const response = await fetch(weatherUrl);
-    if (!response.ok) {
-      throw new Error("Weather API error");
-    }
-    const data = await response.json();
-    function kmhToBft(kmh) {
-      if (kmh < 1) return 0;
-      if (kmh < 6) return 1;
-      if (kmh < 12) return 2;
-      if (kmh < 20) return 3;
-      if (kmh < 29) return 4;
-      if (kmh < 39) return 5;
-      if (kmh < 50) return 6;
-      if (kmh < 62) return 7;
-      if (kmh < 75) return 8;
-      if (kmh < 89) return 9;
-      if (kmh < 103) return 10;
-      if (kmh < 118) return 11;
-      return 12;
-    }
+    const resp = await fetch(weatherUrl);
+    if (!resp.ok) throw new Error("Weather API error");
+    const data = await resp.json();
+    const kmhToBft = (kmh) => { if (kmh<1) return 0; if (kmh<6) return 1; if (kmh<12) return 2; if (kmh<20) return 3; if (kmh<29) return 4; if (kmh<39) return 5; if (kmh<50) return 6; if (kmh<62) return 7; if (kmh<75) return 8; if (kmh<89) return 9; if (kmh<103) return 10; if (kmh<118) return 11; return 12; };
     const hourly = [];
-    for (let i = 0; i < data.hourly.time.length && i < 24; i++) {
-      const time = new Date(data.hourly.time[i]);
-      const hour = time.getHours();
+    for (let i=0; i<data.hourly.time.length && i<24; i++) {
+      const hour = new Date(data.hourly.time[i]).getHours();
       hourly.push({
-        time: hour.toString().padStart(2, '0') + ":00",
+        time: hour.toString().padStart(2,'0')+":00",
         windSpeed: kmhToBft(data.hourly.wind_speed_10m[i]),
         windDir: data.hourly.wind_direction_10m[i] || 0,
         gusts: kmhToBft(data.hourly.wind_gusts_10m[i] || 0),
-        visibility: (data.hourly.visibility[i] || 20000) / 1000,
+        visibility: (data.hourly.visibility[i] || 20000)/1000,
         rain: data.hourly.rain[i] || 0,
         cloudCover: data.hourly.cloudcover[i] || 0,
         airTemp: data.hourly.temperature_2m[i] || 12,
         uvIndex: data.hourly.uv_index[i] || 0
       });
     }
-    let sunrise = null;
-    let sunset = null;
-    if (data.daily && data.daily.sunrise && data.daily.sunrise.length > 0) {
-      const sunriseUTC = new Date(data.daily.sunrise[0]);
-      const sunsetUTC = new Date(data.daily.sunset[0]);
-      sunrise = sunriseUTC.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Dublin' });
-      sunset = sunsetUTC.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Dublin' });
+    let sunrise = null, sunset = null;
+    if (data.daily && data.daily.sunrise && data.daily.sunrise.length) {
+      sunrise = new Date(data.daily.sunrise[0]).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/Dublin' });
+      sunset = new Date(data.daily.sunset[0]).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/Dublin' });
     }
-    return { hourly: hourly, sunrise: sunrise, sunset: sunset };
-  } catch (error) {
-    console.error("Error fetching weather:", error);
-    const emptyHourly = [];
-    for (let hour = 0; hour < 24; hour++) {
-      emptyHourly.push({
-        time: hour.toString().padStart(2, '0') + ":00",
-        windSpeed: 0,
-        windDir: 0,
-        gusts: 0,
-        visibility: 0,
-        rain: 0,
-        cloudCover: 0,
-        airTemp: 0,
-        uvIndex: 0,
-        error: true
-      });
-    }
-    return { hourly: emptyHourly, sunrise: null, sunset: null };
-  }
+    return { hourly, sunrise, sunset };
+  } catch(e) { console.error(e); const empty = []; for (let h=0;h<24;h++) empty.push({ time:h.toString().padStart(2,'0')+":00", windSpeed:0, windDir:0, gusts:0, visibility:0, rain:0, cloudCover:0, airTemp:0, uvIndex:0, error:true }); return { hourly:empty, sunrise:null, sunset:null }; }
 }
 
-// REAL SWELL DATA from Open-Meteo Marine API
+// REAL SWELL DATA
 async function fetchRealSwellData(station, date) {
   try {
-    const lat = station.lat;
-    const lon = station.lon;
-    const dateStr = formatDateForAPI(date);
+    const lat = station.lat, lon = station.lon, dateStr = formatDateForAPI(date);
     const swellUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
-    const response = await fetch(swellUrl);
-    if (!response.ok) {
-      throw new Error("Swell API error");
-    }
-    const data = await response.json();
+    const resp = await fetch(swellUrl);
+    if (!resp.ok) throw new Error("Swell API error");
+    const data = await resp.json();
     const hourly = [];
-    for (let i = 0; i < data.hourly.time.length && i < 24; i++) {
-      const time = new Date(data.hourly.time[i]);
-      const hour = time.getHours();
-      hourly.push({
-        time: hour.toString().padStart(2, '0') + ":00",
-        swellHeight: data.hourly.wave_height[i] || 0.5,
-        swellDir: data.hourly.wave_direction[i] || 0,
-        swellPeriod: data.hourly.wave_period[i] || 5
-      });
+    for (let i=0; i<data.hourly.time.length && i<24; i++) {
+      const hour = new Date(data.hourly.time[i]).getHours();
+      hourly.push({ time: hour.toString().padStart(2,'0')+":00", swellHeight: data.hourly.wave_height[i] || 0.5, swellDir: data.hourly.wave_direction[i] || 0, swellPeriod: data.hourly.wave_period[i] || 5 });
     }
     return hourly;
-  } catch (error) {
-    console.error("Error fetching swell data:", error);
-    const fallback = [];
-    for (let hour = 0; hour < 24; hour++) {
-      fallback.push({
-        time: hour.toString().padStart(2, '0') + ":00",
-        swellHeight: 0.8,
-        swellDir: 180,
-        swellPeriod: 6,
-        error: true
-      });
-    }
-    return fallback;
-  }
+  } catch(e) { console.error(e); const fall = []; for (let h=0;h<24;h++) fall.push({ time:h.toString().padStart(2,'0')+":00", swellHeight:0.8, swellDir:180, swellPeriod:6, error:true }); return fall; }
 }
 
 function isSlackWaterTime(tideEvents, hour, minute) {
-  if (!tideEvents || tideEvents.length === 0) return false;
-  const totalMinutes = hour * 60 + minute;
-  for (let i = 0; i < tideEvents.length; i++) {
-    const tideParts = tideEvents[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    const diff = Math.abs(totalMinutes - tideMinutes);
-    if (diff <= 40) return true;
+  if (!tideEvents.length) return false;
+  const total = hour*60+minute;
+  for (let t of tideEvents) {
+    const m = parseInt(t.time.split(':')[0])*60 + parseInt(t.time.split(':')[1]);
+    if (Math.abs(total - m) <= 40) return true;
   }
   return false;
 }
 
-function getWindArrow(windDirDeg) {
-  if (windDirDeg >= 337.5 || windDirDeg < 22.5) return "↓";
-  if (windDirDeg >= 22.5 && windDirDeg < 67.5) return "↙";
-  if (windDirDeg >= 67.5 && windDirDeg < 112.5) return "←";
-  if (windDirDeg >= 112.5 && windDirDeg < 157.5) return "↖";
-  if (windDirDeg >= 157.5 && windDirDeg < 202.5) return "↑";
-  if (windDirDeg >= 202.5 && windDirDeg < 247.5) return "↗";
-  if (windDirDeg >= 247.5 && windDirDeg < 292.5) return "→";
-  if (windDirDeg >= 292.5 && windDirDeg < 337.5) return "↘";
-  return "→";
+function getWindArrow(deg) {
+  if (deg>=337.5 || deg<22.5) return "↓";
+  if (deg>=22.5 && deg<67.5) return "↙";
+  if (deg>=67.5 && deg<112.5) return "←";
+  if (deg>=112.5 && deg<157.5) return "↖";
+  if (deg>=157.5 && deg<202.5) return "↑";
+  if (deg>=202.5 && deg<247.5) return "↗";
+  if (deg>=247.5 && deg<292.5) return "→";
+  return "↘";
 }
+const getSwellArrow = getWindArrow;
 
-function getSwellArrow(swellDirDeg) {
-  return getWindArrow(swellDirDeg); // same mapping
-}
-
-// ======================== ROBUST TIDE DIRECTION LOGIC ========================
+// ======================== ROBUST TIDE DIRECTION ========================
 function getTideDirection(tideEvents, hour) {
   if (!tideEvents || tideEvents.length === 0) return "No Data";
-
   const tides = tideEvents.map(t => {
     const parts = t.time.split(':');
     return { type: t.type, minutes: parseInt(parts[0]) * 60 + parseInt(parts[1]) };
-  }).sort((a, b) => a.minutes - b.minutes);
-
+  }).sort((a,b) => a.minutes - b.minutes);
   const target = hour * 60;
-  let prev = null;
-  let next = null;
-
+  let prev = null, next = null;
   for (let i = 0; i < tides.length; i++) {
     if (tides[i].minutes <= target) prev = tides[i];
     if (tides[i].minutes >= target && next === null) next = tides[i];
   }
-
-  const first = tides[0];
-  const last = tides[tides.length - 1];
-  const isSlack = (minutes) => Math.abs(minutes - target) <= 40;
-
-  // Before first tide
+  const first = tides[0], last = tides[tides.length-1];
+  const slack = (m) => Math.abs(m - target) <= 40;
   if (target < first.minutes) {
-    if (isSlack(first.minutes)) return "Slack Water ⚡";
+    if (slack(first.minutes)) return "Slack Water ⚡";
     return first.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
   }
-
-  // After last tide
   if (target > last.minutes) {
-    if (isSlack(last.minutes)) return "Slack Water ⚡";
+    if (slack(last.minutes)) return "Slack Water ⚡";
     return last.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
   }
-
-  // Between two tides
   if (prev && next) {
-    if (isSlack(prev.minutes) || isSlack(next.minutes)) return "Slack Water ⚡";
+    if (slack(prev.minutes) || slack(next.minutes)) return "Slack Water ⚡";
     if (prev.type === "High" && next.type === "Low") return "Ebbing 🌊⬇️";
     if (prev.type === "Low" && next.type === "High") return "Flooding 🌊⬆️";
   }
   return "No Data";
 }
-// ===========================================================================
+// ======================================================================
+
+// ======================== ROBUST CLOSEST TIDES for EXPORT & DETAIL ========================
+function getClosestTides(tideEvents, targetHour, targetMinute) {
+  if (!tideEvents || tideEvents.length === 0) return { prev: null, next: null };
+  const target = targetHour * 60 + targetMinute;
+  // Convert to minutes and keep original tide objects
+  const withMinutes = tideEvents.map(t => ({
+    tide: t,
+    minutes: parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1])
+  })).sort((a,b) => a.minutes - b.minutes);
+  // Find previous (largest <= target) and next (smallest >= target)
+  let prev = null, next = null;
+  for (let item of withMinutes) {
+    if (item.minutes <= target) prev = item.tide;
+    if (item.minutes >= target && next === null) next = item.tide;
+  }
+  // Fallback if one is missing
+  if (!prev && next) prev = next;
+  if (!next && prev) next = prev;
+  return { prev, next };
+}
+// ======================================================================
 
 async function getFormattedExportText() {
   const diveSiteElem = document.getElementById('diveSite');
@@ -522,67 +387,25 @@ async function getFormattedExportText() {
 
   const coxModeRadios = document.querySelectorAll('input[name="coxMode"]');
   let coxMode = '';
-  for (let i = 0; i < coxModeRadios.length; i++) {
-    if (coxModeRadios[i].checked) {
-      coxMode = coxModeRadios[i].value;
-      break;
-    }
-  }
-
-  const participationRadios = document.querySelectorAll('input[name="participation"]');
+  for (let r of coxModeRadios) if (r.checked) coxMode = r.value;
+  const partRadios = document.querySelectorAll('input[name="participation"]');
   let participation = "Open to All";
-  for (let i = 0; i < participationRadios.length; i++) {
-    if (participationRadios[i].checked) {
-      participation = participationRadios[i].value;
-      break;
-    }
-  }
-
+  for (let r of partRadios) if (r.checked) participation = r.value;
   const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
   let diveType = "Boat";
-  for (let i = 0; i < diveTypeRadios.length; i++) {
-    if (diveTypeRadios[i].checked) {
-      diveType = diveTypeRadios[i].value;
-      break;
-    }
-  }
-
+  for (let r of diveTypeRadios) if (r.checked) diveType = r.value;
   const timePrefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
 
   const weatherData = await fetchRealWeather(currentStation, currentDate);
   const weather = weatherData.hourly;
   const swell = await fetchRealSwellData(currentStation, currentDate);
-  let hourWeather = null;
-  let hourSwell = null;
-  for (let i = 0; i < weather.length; i++) {
-    if (parseInt(weather[i].time) === currentHour) {
-      hourWeather = weather[i];
-      break;
-    }
-  }
-  for (let i = 0; i < swell.length; i++) {
-    if (parseInt(swell[i].time) === currentHour) {
-      hourSwell = swell[i];
-      break;
-    }
-  }
-  if (!hourWeather) hourWeather = weather[12];
-  if (!hourSwell) hourSwell = { swellHeight: 0, swellPeriod: 0, swellDir: 0 };
-
+  let hourWeather = weather.find(w => parseInt(w.time) === currentHour) || weather[12];
+  let hourSwell = swell.find(s => parseInt(s.time) === currentHour) || { swellHeight:0, swellPeriod:0, swellDir:0 };
   const tides = await fetchRealTideData(currentStation, currentDate);
+  const { prev: prevTide, next: nextTide } = getClosestTides(tides.events, currentHour, currentMinute);
 
-  let prevTide = null;
-  let nextTide = null;
-  const targetMinutes = currentHour * 60 + currentMinute;
-  for (let i = 0; i < tides.events.length; i++) {
-    const tideParts = tides.events[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    if (tideMinutes <= targetMinutes) prevTide = tides.events[i];
-    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tides.events[i];
-  }
-
-  const highWater = (prevTide && prevTide.type === 'High') ? prevTide : ((nextTide && nextTide.type === 'High') ? nextTide : null);
-  const lowWater = (prevTide && prevTide.type === 'Low') ? prevTide : ((nextTide && nextTide.type === 'Low') ? nextTide : null);
+  const highWater = (prevTide && prevTide.type === 'High') ? prevTide : (nextTide && nextTide.type === 'High') ? nextTide : null;
+  const lowWater  = (prevTide && prevTide.type === 'Low')  ? prevTide : (nextTide && nextTide.type === 'Low')  ? nextTide : null;
 
   const categories = Array.from(selectedChips).join(', ');
   const windArrow = getWindArrow(hourWeather.windDir);
@@ -597,332 +420,173 @@ async function getFormattedExportText() {
     weatherText += "   Cloud Cover: " + hourWeather.cloudCover + "%\n";
     weatherText += "   Air Temp: " + hourWeather.airTemp.toFixed(1) + "°C\n";
     weatherText += "   UV Index: " + hourWeather.uvIndex;
-  } else {
-    weatherText = 'Weather data unavailable';
-  }
+  } else weatherText = 'Weather data unavailable';
 
   let text = "═══════════════════════════════════\n";
   text += "        🌊 DIVESENSE DIVE PLAN 🌊\n";
   text += "═══════════════════════════════════\n\n";
-
-  text += "📅 DATE & TIME\n";
-  text += "─────────────────────────────────\n";
+  text += "📅 DATE & TIME\n─────────────────────────────────\n";
   text += "Date: " + formatDateDisplay(currentDate) + "\n";
   text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n\n";
-
-  text += "📍 LOCATION\n";
-  text += "─────────────────────────────────\n";
+  text += "📍 LOCATION\n─────────────────────────────────\n";
   text += "Base Station: " + currentStation.name + "\n";
   text += "Coordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
   text += "Google Maps: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
   text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
   text += "Dive Type: " + diveType + "\n\n";
-
-  text += "🌊 TIDES\n";
-  text += "─────────────────────────────────\n";
+  text += "🌊 TIDES\n─────────────────────────────────\n";
   text += "High Water: " + (highWater ? highWater.time + " (" + highWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
   text += "Low Water: " + (lowWater ? lowWater.time + " (" + lowWater.height.toFixed(2) + "m)" : 'N/A') + "\n\n";
-
-  text += "🌡️ CONDITIONS AT DIVE TIME\n";
-  text += "─────────────────────────────────\n";
+  text += "🌡️ CONDITIONS AT DIVE TIME\n─────────────────────────────────\n";
   text += weatherText + "\n";
-  if (weatherData.sunrise && weatherData.sunset) {
-    text += "\nSunrise: " + weatherData.sunrise + "\n";
-    text += "Sunset: " + weatherData.sunset + "\n";
-  }
-  text += "\n";
-
-  text += "👥 CREW\n";
-  text += "─────────────────────────────────\n";
+  if (weatherData.sunrise && weatherData.sunset) text += "\nSunrise: " + weatherData.sunrise + "\nSunset: " + weatherData.sunset + "\n";
+  text += "\n👥 CREW\n─────────────────────────────────\n";
   text += "DOD: " + (dod || 'Not specified') + "\n";
   text += "Assistant DOD: " + (dodAsst || 'None') + "\n";
-
   if (diveType === 'Boat') {
     text += "Cox'n: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
-    const boatDeparture = document.getElementById('boatDeparture') ? document.getElementById('boatDeparture').value : '';
+    const boatDeparture = document.getElementById('boatDeparture')?.value || '';
     text += "Boat Departure Location: " + (boatDeparture || 'Not specified') + "\n";
   } else {
-    const kittedBriefLocation = document.getElementById('kittedBriefLocation') ? document.getElementById('kittedBriefLocation').value : '';
-    text += "Kitted Brief Location: " + (kittedBriefLocation || 'Not specified') + "\n";
+    const kittedBrief = document.getElementById('kittedBriefLocation')?.value || '';
+    text += "Kitted Brief Location: " + (kittedBrief || 'Not specified') + "\n";
   }
-
-  let participationText = participation;
-  if (participation === "Open to All") {
-    participationText = "Open to All (with appropriate buddy pairs)";
-  } else if (participation === "Restricted to D2+") {
-    participationText = "Restricted to D2+ (with appropriate buddy pairs)";
-  }
-  text += "Participation: " + participationText + "\n";
+  let partText = participation === "Open to All" ? "Open to All (with appropriate buddy pairs)" : "Restricted to D2+ (with appropriate buddy pairs)";
+  text += "Participation: " + partText + "\n";
   text += "Max Depth: " + (maxDepth || 'N/A') + "m\n\n";
-
-  text += "⚙️ EQUIPMENT & CATEGORIES\n";
-  text += "─────────────────────────────────\n";
+  text += "⚙️ EQUIPMENT & CATEGORIES\n─────────────────────────────────\n";
   if (torches) text += "✓ Torches Required\n";
   if (lifeJackets) text += "✓ Life Jackets Required\n";
   text += "Dive Categories: " + (categories || 'None selected') + "\n\n";
-
   text += "═══════════════════════════════════\n";
   text += "📚 DIVE BUDDIES, GRADES & DEPTHS\n";
   text += "═══════════════════════════════════\n";
   text += "Please see: https://drive.google.com/drive/folders/139b1VxbTvLtw-i1fd7CBdL_MhM5mCDdW?usp=sharing\n";
   text += "for DIVE BUDDIES, GRADES AND MAXIMUM DEPTHS\n\n";
-
   text += "─────────────────────────────────\n";
   text += "⚠️ Always verify with official sources\n";
   text += "Created with DiveSense - Dive Planning tool available on https://www.sultansofsurf.com\n";
-
   return text;
 }
 
 function buildCalendar() {
   const container = document.getElementById('calendarContainer');
   if (!container) return;
-
   const year = currentCalendarMonth.getFullYear();
   const month = currentCalendarMonth.getMonth();
   const firstDay = new Date(year, month, 1);
   const startDay = firstDay.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  let selectedDate = new Date(currentDate);
-  selectedDate.setHours(0, 0, 0, 0);
-
-  const maxDate = new Date(today);
-  maxDate.setDate(today.getDate() + 10);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  let selectedDate = new Date(currentDate); selectedDate.setHours(0,0,0,0);
+  const maxDate = new Date(today); maxDate.setDate(today.getDate()+10);
   const minDate = today;
-
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-  let html = '<div class="calendar-header"><div class="calendar-month-year">' + monthNames[month] + ' ' + year + '</div><div class="calendar-nav"><button class="calendar-nav-btn" data-prev-month>&lt;</button><button class="calendar-nav-btn" data-next-month>&gt;</button></div></div><div class="calendar-weekdays"><div class="calendar-weekday">Su</div><div class="calendar-weekday">Mo</div><div class="calendar-weekday">Tu</div><div class="calendar-weekday">We</div><div class="calendar-weekday">Th</div><div class="calendar-weekday">Fr</div><div class="calendar-weekday">Sa</div></div><div class="calendar-days">';
-
-  for (let i = 0; i < startDay; i++) {
-    html += '<div class="calendar-day other-month"></div>';
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const currentDateObj = new Date(year, month, day);
-    currentDateObj.setHours(0, 0, 0, 0);
-    const isSelected = currentDateObj.getTime() === selectedDate.getTime();
-    const isToday = currentDateObj.getTime() === today.getTime();
-    const isDisabled = currentDateObj < minDate || currentDateObj > maxDate;
-
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let html = `<div class="calendar-header"><div class="calendar-month-year">${monthNames[month]} ${year}</div><div class="calendar-nav"><button class="calendar-nav-btn" data-prev-month>&lt;</button><button class="calendar-nav-btn" data-next-month>&gt;</button></div></div><div class="calendar-weekdays"><div class="calendar-weekday">Su</div><div class="calendar-weekday">Mo</div><div class="calendar-weekday">Tu</div><div class="calendar-weekday">We</div><div class="calendar-weekday">Th</div><div class="calendar-weekday">Fr</div><div class="calendar-weekday">Sa</div></div><div class="calendar-days">`;
+  for (let i=0; i<startDay; i++) html += '<div class="calendar-day other-month"></div>';
+  for (let d=1; d<=daysInMonth; d++) {
+    const cur = new Date(year, month, d); cur.setHours(0,0,0,0);
+    const isSelected = cur.getTime() === selectedDate.getTime();
+    const isToday = cur.getTime() === today.getTime();
+    const isDisabled = cur < minDate || cur > maxDate;
     let classes = 'calendar-day';
     if (isSelected) classes += ' selected';
     if (isToday) classes += ' today';
     if (isDisabled) classes += ' disabled';
-
-    html += '<div class="' + classes + '" data-date="' + currentDateObj.toISOString() + '">' + day + '</div>';
+    html += `<div class="${classes}" data-date="${cur.toISOString()}">${d}</div>`;
   }
-
   html += '</div>';
   container.innerHTML = html;
-
-  const days = document.querySelectorAll('.calendar-day:not(.disabled):not(.other-month)');
-  for (let i = 0; i < days.length; i++) {
-    days[i].addEventListener('click', function() {
-      hapticFeedback();
-      const date = new Date(this.dataset.date);
-      currentDate = date;
-      buildCalendar();
-      loadAllData();
-    });
-  }
-
-  const navBtns = document.querySelectorAll('.calendar-nav-btn');
-  for (let i = 0; i < navBtns.length; i++) {
-    navBtns[i].addEventListener('click', function() {
-      if (this.dataset.prevMonth !== undefined) {
-        currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
-      } else if (this.dataset.nextMonth !== undefined) {
-        currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
-      }
+  document.querySelectorAll('.calendar-day:not(.disabled):not(.other-month)').forEach(day => {
+    day.addEventListener('click', () => { hapticFeedback(); currentDate = new Date(day.dataset.date); buildCalendar(); loadAllData(); });
+  });
+  document.querySelectorAll('.calendar-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.prevMonth !== undefined) currentCalendarMonth.setMonth(currentCalendarMonth.getMonth()-1);
+      else currentCalendarMonth.setMonth(currentCalendarMonth.getMonth()+1);
       buildCalendar();
     });
-  }
+  });
 }
 
 function initStations() {
   const container = document.getElementById('stationScroll');
   if (!container) return;
-
   let html = '';
-  for (let i = 0; i < stations.length; i++) {
-    const station = stations[i];
-    const activeClass = (station.name === currentStation.name) ? 'active' : '';
-    html += '<div class="station-card ' + activeClass + '" data-idx="' + i + '">' + station.name + '<br><small>' + station.county + '</small></div>';
-  }
+  stations.forEach((s,i) => {
+    const active = s.name === currentStation.name ? 'active' : '';
+    html += `<div class="station-card ${active}" data-idx="${i}">${s.name}<br><small>${s.county}</small></div>`;
+  });
   container.innerHTML = html;
-
-  const cards = document.querySelectorAll('.station-card');
-  for (let i = 0; i < cards.length; i++) {
-    cards[i].addEventListener('click', function() {
-      hapticFeedback();
-      const idx = parseInt(this.dataset.idx);
-      currentStation = stations[idx];
-      initStations();
-      loadAllData();
-    });
-  }
+  document.querySelectorAll('.station-card').forEach(card => {
+    card.addEventListener('click', () => { hapticFeedback(); currentStation = stations[parseInt(card.dataset.idx)]; initStations(); loadAllData(); });
+  });
 }
 
 function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
   if (!hourWheel || !minuteWheel) return;
-
-  hourWheel.innerHTML = '';
-  minuteWheel.innerHTML = '';
-
-  const hourValues = [22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1];
-  for (let h = 0; h < hourValues.length; h++) {
-    const val = hourValues[h];
-    const option = document.createElement('div');
-    option.className = 'spinner-option';
-    option.textContent = val.toString().padStart(2, '0');
-    option.dataset.value = val;
-    hourWheel.appendChild(option);
-  }
-
-  const minuteValues = [58, 59, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 0, 1];
-  for (let m = 0; m < minuteValues.length; m++) {
-    const val = minuteValues[m];
-    const option = document.createElement('div');
-    option.className = 'spinner-option';
-    option.textContent = val.toString().padStart(2, '0');
-    option.dataset.value = val;
-    minuteWheel.appendChild(option);
-  }
-
-  function getRealHourFromValue(val) {
-    if (val < 0) return 0;
-    if (val > 23) return 23;
-    return val;
-  }
-
-  function getRealMinuteFromValue(val) {
-    if (val < 0) return 0;
-    if (val > 59) return 59;
-    return val;
-  }
-
+  hourWheel.innerHTML = ''; minuteWheel.innerHTML = '';
+  const hourVals = [22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1];
+  for (let v of hourVals) { const opt = document.createElement('div'); opt.className = 'spinner-option'; opt.textContent = v.toString().padStart(2,'0'); opt.dataset.value = v; hourWheel.appendChild(opt); }
+  const minuteVals = [58,59,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,0,1];
+  for (let v of minuteVals) { const opt = document.createElement('div'); opt.className = 'spinner-option'; opt.textContent = v.toString().padStart(2,'0'); opt.dataset.value = v; minuteWheel.appendChild(opt); }
+  function getRealHour(v) { if (v<0) return 0; if (v>23) return 23; return v; }
+  function getRealMinute(v) { if (v<0) return 0; if (v>59) return 59; return v; }
   function updateHighlights() {
-    const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
-    for (let i = 0; i < hourOptions.length; i++) {
-      if (parseInt(hourOptions[i].dataset.value) === currentHour) {
-        hourOptions[i].classList.add('selected');
-      } else {
-        hourOptions[i].classList.remove('selected');
-      }
-    }
-    const minuteOptions = document.querySelectorAll('#minuteWheel .spinner-option');
-    for (let i = 0; i < minuteOptions.length; i++) {
-      if (parseInt(minuteOptions[i].dataset.value) === currentMinute) {
-        minuteOptions[i].classList.add('selected');
-      } else {
-        minuteOptions[i].classList.remove('selected');
-      }
-    }
+    document.querySelectorAll('#hourWheel .spinner-option').forEach(opt => { if (parseInt(opt.dataset.value) === currentHour) opt.classList.add('selected'); else opt.classList.remove('selected'); });
+    document.querySelectorAll('#minuteWheel .spinner-option').forEach(opt => { if (parseInt(opt.dataset.value) === currentMinute) opt.classList.add('selected'); else opt.classList.remove('selected'); });
     updateTimeLabel();
   }
-
-  let scrollTimeout;
-
-  hourWheel.addEventListener('scroll', function() {
-    if (scrollTimeout) clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(function() {
-      const center = hourWheel.scrollTop + hourWheel.clientHeight / 2;
-      let closest = null;
-      let minDist = Infinity;
-      const options = hourWheel.children;
-      for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        const rect = opt.getBoundingClientRect();
-        const wheelRect = hourWheel.getBoundingClientRect();
-        const optCenter = rect.top + rect.height / 2;
-        const wheelCenter = wheelRect.top + wheelRect.height / 2;
+  let timeout;
+  hourWheel.addEventListener('scroll', () => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      const center = hourWheel.scrollTop + hourWheel.clientHeight/2;
+      let closest = null, minDist = Infinity;
+      for (let opt of hourWheel.children) {
+        const rect = opt.getBoundingClientRect(), wheelRect = hourWheel.getBoundingClientRect();
+        const optCenter = rect.top + rect.height/2, wheelCenter = wheelRect.top + wheelRect.height/2;
         const dist = Math.abs(optCenter - wheelCenter);
-        if (dist < minDist) {
-          minDist = dist;
-          closest = opt;
-        }
+        if (dist < minDist) { minDist = dist; closest = opt; }
       }
       if (closest) {
         let newHour = parseInt(closest.dataset.value);
-        newHour = getRealHourFromValue(newHour);
-        if (newHour !== currentHour) {
-          currentHour = newHour;
-          updateHighlights();
-          updateDetailed();
-          updateHourly();
-        }
+        newHour = getRealHour(newHour);
+        if (newHour !== currentHour) { currentHour = newHour; updateHighlights(); updateDetailed(); updateHourly(); }
       }
     }, 50);
   });
-
-  minuteWheel.addEventListener('scroll', function() {
-    if (scrollTimeout) clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(function() {
-      const center = minuteWheel.scrollTop + minuteWheel.clientHeight / 2;
-      let closest = null;
-      let minDist = Infinity;
-      const options = minuteWheel.children;
-      for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        const rect = opt.getBoundingClientRect();
-        const wheelRect = minuteWheel.getBoundingClientRect();
-        const optCenter = rect.top + rect.height / 2;
-        const wheelCenter = wheelRect.top + wheelRect.height / 2;
+  minuteWheel.addEventListener('scroll', () => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      const center = minuteWheel.scrollTop + minuteWheel.clientHeight/2;
+      let closest = null, minDist = Infinity;
+      for (let opt of minuteWheel.children) {
+        const rect = opt.getBoundingClientRect(), wheelRect = minuteWheel.getBoundingClientRect();
+        const optCenter = rect.top + rect.height/2, wheelCenter = wheelRect.top + wheelRect.height/2;
         const dist = Math.abs(optCenter - wheelCenter);
-        if (dist < minDist) {
-          minDist = dist;
-          closest = opt;
-        }
+        if (dist < minDist) { minDist = dist; closest = opt; }
       }
       if (closest) {
         let newMinute = parseInt(closest.dataset.value);
-        newMinute = getRealMinuteFromValue(newMinute);
-        if (newMinute !== currentMinute) {
-          currentMinute = newMinute;
-          updateHighlights();
-          updateDetailed();
-          updateHourly();
-        }
+        newMinute = getRealMinute(newMinute);
+        if (newMinute !== currentMinute) { currentMinute = newMinute; updateHighlights(); updateDetailed(); updateHourly(); }
       }
     }, 50);
   });
-
   updateHighlights();
-
   function scrollToCurrentValue() {
-    const hourOptions = document.querySelectorAll('#hourWheel .spinner-option');
-    const minuteOptions = document.querySelectorAll('#minuteWheel .spinner-option');
-    let hourElement = null;
-    let minuteElement = null;
-
-    for (let i = 0; i < hourOptions.length; i++) {
-      if (parseInt(hourOptions[i].dataset.value) === currentHour) {
-        hourElement = hourOptions[i];
-        break;
-      }
-    }
-    for (let i = 0; i < minuteOptions.length; i++) {
-      if (parseInt(minuteOptions[i].dataset.value) === currentMinute) {
-        minuteElement = minuteOptions[i];
-        break;
-      }
-    }
-    if (hourElement) hourElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    if (minuteElement) minuteElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const hourOpt = Array.from(hourWheel.children).find(o => parseInt(o.dataset.value) === currentHour);
+    const minOpt = Array.from(minuteWheel.children).find(o => parseInt(o.dataset.value) === currentMinute);
+    if (hourOpt) hourOpt.scrollIntoView({ block: 'center' });
+    if (minOpt) minOpt.scrollIntoView({ block: 'center' });
   }
-
   setTimeout(scrollToCurrentValue, 50);
   setTimeout(scrollToCurrentValue, 200);
   setTimeout(scrollToCurrentValue, 500);
-  window.addEventListener('load', function() {
-    setTimeout(scrollToCurrentValue, 100);
-  });
+  window.addEventListener('load', () => setTimeout(scrollToCurrentValue, 100));
 }
 
 function initDiveType() {
@@ -931,77 +595,40 @@ function initDiveType() {
   const boatDepartureField = document.getElementById('boatDepartureField');
   const kittedBriefField = document.getElementById('kittedBriefField');
   const lifeJackets = document.getElementById('lifeJackets');
-
-  for (let i = 0; i < radios.length; i++) {
-    radios[i].addEventListener('change', function(e) {
-      const isBoat = e.target.value === 'Boat';
-
-      if (coxField) {
-        coxField.style.display = isBoat ? 'block' : 'none';
-      }
-      if (boatDepartureField) {
-        boatDepartureField.style.display = isBoat ? 'block' : 'none';
-      }
-      if (kittedBriefField) {
-        kittedBriefField.style.display = isBoat ? 'none' : 'block';
-      }
-      if (lifeJackets) {
-        lifeJackets.checked = isBoat;
-      }
-      updateTimeLabel();
-      saveUserPreferences();
-    });
-  }
-
-  if (coxField) coxField.style.display = 'block';
-  if (boatDepartureField) boatDepartureField.style.display = 'block';
-  if (kittedBriefField) kittedBriefField.style.display = 'none';
-  updateTimeLabel();
+  const update = () => {
+    const isBoat = document.querySelector('input[name="diveType"]:checked').value === 'Boat';
+    if (coxField) coxField.style.display = isBoat ? 'block' : 'none';
+    if (boatDepartureField) boatDepartureField.style.display = isBoat ? 'block' : 'none';
+    if (kittedBriefField) kittedBriefField.style.display = isBoat ? 'none' : 'block';
+    if (lifeJackets) lifeJackets.checked = isBoat;
+    updateTimeLabel();
+  };
+  radios.forEach(r => r.addEventListener('change', update));
+  update();
 }
 
 function renderChips() {
-  const chips = document.querySelectorAll('.chips span');
-  for (let i = 0; i < chips.length; i++) {
-    if (selectedChips.has(chips[i].dataset.chip)) {
-      chips[i].classList.add('active-chip');
-    } else {
-      chips[i].classList.remove('active-chip');
-    }
-  }
+  document.querySelectorAll('.chips span').forEach(chip => {
+    if (selectedChips.has(chip.dataset.chip)) chip.classList.add('active-chip');
+    else chip.classList.remove('active-chip');
+  });
 }
 
 async function updateTides() {
   const tides = await fetchRealTideData(currentStation, currentDate);
-
   if (tides.error || !tides.events || tides.events.length === 0) {
-    const tideDiv = document.getElementById('tideData');
-    if (tideDiv) tideDiv.innerHTML = '<div class="tide-event">⚠️ Tide data unavailable for this station/date</div>';
+    document.getElementById('tideData').innerHTML = '<div class="tide-event">⚠️ Tide data unavailable for this station/date</div>';
     return;
   }
-
-  const tideTypeClass = (tides.tideType === 'Springs') ? 'springs-text' : (tides.tideType === 'Neaps' ? 'neaps-text' : '');
-  const tideTypeIcon = (tides.tideType === 'Springs') ? '🌕' : (tides.tideType === 'Neaps' ? '🌙' : '');
-
+  const tideTypeClass = tides.tideType === 'Springs' ? 'springs-text' : (tides.tideType === 'Neaps' ? 'neaps-text' : '');
+  const tideTypeIcon = tides.tideType === 'Springs' ? '🌕' : (tides.tideType === 'Neaps' ? '🌙' : '');
   let html = '';
-  if (tides.tideType !== 'Unknown') {
-    html += '<div class="' + tideTypeClass + '" style="font-size:1.2rem; margin-bottom:10px;">' + tideTypeIcon + ' ' + tides.tideType.toUpperCase() + ' TIDES</div>';
-  }
-
-  html += '<div class="text-small mb-2" style="text-align:center;">⏰ Times shown in ' + tides.timezone + '</div>';
-
-  for (let i = 0; i < tides.events.length; i++) {
-    const e = tides.events[i];
-    const tideIcon = (e.type === 'High') ? '🌊 HIGH' : '⬇️ LOW';
-    html += '<div class="tide-event"><span>' + tideIcon + '</span><span>' + e.time + '</span><span>' + e.height.toFixed(2) + 'm</span></div>';
-  }
-
-  html += '<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">';
-  html += '📐 Heights relative to LAT (Lowest Astronomical Tide) - the lowest predicted tide level over a full nodal cycle';
-  html += '</div>';
-  html += '<div class="text-small mt-2">' + tides.moonIcon + ' ' + tides.moonPhase + '</div>';
-
-  const tideDiv = document.getElementById('tideData');
-  if (tideDiv) tideDiv.innerHTML = html;
+  if (tides.tideType !== 'Unknown') html += `<div class="${tideTypeClass}" style="font-size:1.2rem; margin-bottom:10px;">${tideTypeIcon} ${tides.tideType.toUpperCase()} TIDES</div>`;
+  html += `<div class="text-small mb-2" style="text-align:center;">⏰ Times shown in ${tides.timezone}</div>`;
+  tides.events.forEach(e => { html += `<div class="tide-event"><span>${e.type === 'High' ? '🌊 HIGH' : '⬇️ LOW'}</span><span>${e.time}</span><span>${e.height.toFixed(2)}m</span></div>`; });
+  html += `<div class="text-small mt-2" style="background: rgba(47, 255, 238, 0.05); padding: 8px; border-radius: 8px;">📐 Heights relative to LAT (Lowest Astronomical Tide) - the lowest predicted tide level over a full nodal cycle</div>`;
+  html += `<div class="text-small mt-2">${tides.moonIcon} ${tides.moonPhase}</div>`;
+  document.getElementById('tideData').innerHTML = html;
 }
 
 async function updateHourly() {
@@ -1012,35 +639,26 @@ async function updateHourly() {
   const selectedHour = currentHour;
   const container = document.getElementById('hourlyScroll');
   if (!container) return;
-
   if (weather.length === 0 || (weather[0] && weather[0].error)) {
     container.innerHTML = '<div style="text-align:center; padding:20px;">⚠️ Weather data unavailable</div>';
     return;
   }
-
   let html = '';
-  for (let i = 0; i < weather.length; i++) {
-    const hour = weather[i];
-    const swellHour = swell.find(s => s.time === hour.time) || { swellHeight: 0.5, swellPeriod: 5, swellDir: 0 };
+  for (let hour of weather) {
     const hourNum = parseInt(hour.time);
-    const tideDirection = getTideDirection(tides.events, hourNum);
-    let tideIcon = '';
-    if (tideDirection.includes('Flooding')) tideIcon = '⬆️';
-    else if (tideDirection.includes('Ebbing')) tideIcon = '⬇️';
-    else if (tideDirection.includes('Slack')) tideIcon = '⚡';
-    else tideIcon = '❓';
-
+    const swellHour = swell.find(s => s.time === hour.time) || { swellHeight:0.5, swellPeriod:5, swellDir:0 };
+    const tideDir = getTideDirection(tides.events, hourNum);
+    let tideIcon = tideDir.includes('Flooding') ? '⬆️' : (tideDir.includes('Ebbing') ? '⬇️' : (tideDir.includes('Slack') ? '⚡' : '❓'));
     const weatherIcon = getWeatherIcon(hour.cloudCover, hour.rain);
     const windArrow = getWindArrow(hour.windDir);
     const swellArrow = getSwellArrow(swellHour.swellDir);
-    const highlightClass = (hourNum === selectedHour) ? 'highlight' : '';
-
-    html += '<div class="hourly-card ' + highlightClass + '">';
-    html += '<strong>' + hour.time + '</strong>';
-    html += '<div>' + weatherIcon + ' ' + hour.windSpeed + ' Bft ' + hour.windDir + '° ' + degreesToDirection(hour.windDir) + ' ' + windArrow + '</div>';
-    html += '<div>🌊 ' + swellHour.swellHeight.toFixed(1) + 'm / ' + swellHour.swellPeriod + 's ' + swellHour.swellDir + '° ' + degreesToDirection(swellHour.swellDir) + ' ' + swellArrow + '</div>';
-    html += '<div style="font-size: 10px; margin-top: 4px;">' + tideIcon + ' ' + tideDirection + '</div>';
-    html += '</div>';
+    const highlight = hourNum === selectedHour ? 'highlight' : '';
+    html += `<div class="hourly-card ${highlight}">
+      <strong>${hour.time}</strong>
+      <div>${weatherIcon} ${hour.windSpeed} Bft ${hour.windDir}° ${degreesToDirection(hour.windDir)} ${windArrow}</div>
+      <div>🌊 ${swellHour.swellHeight.toFixed(1)}m / ${swellHour.swellPeriod}s ${swellHour.swellDir}° ${degreesToDirection(swellHour.swellDir)} ${swellArrow}</div>
+      <div style="font-size: 10px; margin-top: 4px;">${tideIcon} ${tideDir}</div>
+    </div>`;
   }
   container.innerHTML = html;
 }
@@ -1050,32 +668,14 @@ async function updateDetailed() {
   const weather = weatherData.hourly;
   const swell = await fetchRealSwellData(currentStation, currentDate);
   const tides = await fetchRealTideData(currentStation, currentDate);
-  const selectedHour = currentHour;
-  const selectedMinute = currentMinute;
-
-  let hourWeather = null;
-  let hourSwell = null;
-  for (let i = 0; i < weather.length; i++) {
-    if (parseInt(weather[i].time) === selectedHour) {
-      hourWeather = weather[i];
-      break;
-    }
-  }
-  for (let i = 0; i < swell.length; i++) {
-    if (parseInt(swell[i].time) === selectedHour) {
-      hourSwell = swell[i];
-      break;
-    }
-  }
-  if (!hourWeather) hourWeather = weather[12];
-  if (!hourSwell) hourSwell = { swellHeight: 0.5, swellPeriod: 5, swellDir: 0 };
-
-  const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
-
-  let tideDirection = getTideDirection(tides.events, selectedHour);
-  if (tideDirection === "Flooding 🌊⬆️") tideDirection = "Flooding (Incoming) 🌊⬆️";
-  else if (tideDirection === "Ebbing 🌊⬇️") tideDirection = "Ebbing (Outgoing) 🌊⬇️";
-  else if (tideDirection === "Slack Water ⚡") tideDirection = "Slack Water ⚡";
+  const selectedHour = currentHour, selectedMinute = currentMinute;
+  let hourWeather = weather.find(w => parseInt(w.time) === selectedHour) || weather[12];
+  let hourSwell = swell.find(s => parseInt(s.time) === selectedHour) || { swellHeight:0.5, swellPeriod:5, swellDir:0 };
+  const isSlack = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
+  let tideDir = getTideDirection(tides.events, selectedHour);
+  if (tideDir === "Flooding 🌊⬆️") tideDir = "Flooding (Incoming) 🌊⬆️";
+  else if (tideDir === "Ebbing 🌊⬇️") tideDir = "Ebbing (Outgoing) 🌊⬇️";
+  else if (tideDir === "Slack Water ⚡") tideDir = "Slack Water ⚡";
 
   const weatherIcon = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain);
   const windArrow = getWindArrow(hourWeather.windDir);
@@ -1083,116 +683,72 @@ async function updateDetailed() {
 
   let html = '';
   if (hourWeather && !hourWeather.error) {
-    html = '<div class="detail-row"><strong>Wind:</strong> ' + weatherIcon + ' ' + hourWeather.windSpeed + ' Bft ' + hourWeather.windDir + '° ' + degreesToDirection(hourWeather.windDir) + ' ' + windArrow + ' (Gusts ' + hourWeather.gusts + ' Bft)</div>';
-    html += '<div class="detail-row"><strong>Swell:</strong> ' + hourSwell.swellHeight.toFixed(1) + 'm / ' + hourSwell.swellPeriod + 's ' + hourSwell.swellDir + '° ' + degreesToDirection(hourSwell.swellDir) + ' ' + swellArrow + '</div>';
-    html += '<div class="detail-row"><strong>Rain:</strong> ' + hourWeather.rain.toFixed(1) + ' mm</div>';
-    html += '<div class="detail-row"><strong>Visibility:</strong> ' + hourWeather.visibility.toFixed(1) + ' km</div>';
-    html += '<div class="detail-row"><strong>Cloud Cover:</strong> ' + hourWeather.cloudCover + '%</div>';
-    html += '<div class="detail-row"><strong>Air Temp:</strong> ' + hourWeather.airTemp.toFixed(1) + '°C</div>';
-    html += '<div class="detail-row"><strong>UV Index:</strong> ' + hourWeather.uvIndex + '</div>';
-
+    html = `<div class="detail-row"><strong>Wind:</strong> ${weatherIcon} ${hourWeather.windSpeed} Bft ${hourWeather.windDir}° ${degreesToDirection(hourWeather.windDir)} ${windArrow} (Gusts ${hourWeather.gusts} Bft)</div>`;
+    html += `<div class="detail-row"><strong>Swell:</strong> ${hourSwell.swellHeight.toFixed(1)}m / ${hourSwell.swellPeriod}s ${hourSwell.swellDir}° ${degreesToDirection(hourSwell.swellDir)} ${swellArrow}</div>`;
+    html += `<div class="detail-row"><strong>Rain:</strong> ${hourWeather.rain.toFixed(1)} mm</div>`;
+    html += `<div class="detail-row"><strong>Visibility:</strong> ${hourWeather.visibility.toFixed(1)} km</div>`;
+    html += `<div class="detail-row"><strong>Cloud Cover:</strong> ${hourWeather.cloudCover}%</div>`;
+    html += `<div class="detail-row"><strong>Air Temp:</strong> ${hourWeather.airTemp.toFixed(1)}°C</div>`;
+    html += `<div class="detail-row"><strong>UV Index:</strong> ${hourWeather.uvIndex}</div>`;
     if (weatherData.sunrise && weatherData.sunset) {
-      html += '<div class="detail-row"><strong>Sunrise:</strong> ' + weatherData.sunrise + '</div>';
-      html += '<div class="detail-row"><strong>Sunset:</strong> ' + weatherData.sunset + '</div>';
+      html += `<div class="detail-row"><strong>Sunrise:</strong> ${weatherData.sunrise}</div>`;
+      html += `<div class="detail-row"><strong>Sunset:</strong> ${weatherData.sunset}</div>`;
     }
-  } else {
-    html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
-  }
+  } else html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
+  if (isSlack && tides.events.length > 0) html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
 
-  if (isSlackWater && tides.events.length > 0) {
-    html += '<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>';
-  }
-
-  let prevTide = null;
-  let nextTide = null;
-  const targetMinutes = selectedHour * 60 + selectedMinute;
-  for (let i = 0; i < tides.events.length; i++) {
-    const tideParts = tides.events[i].time.split(':');
-    const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
-    if (tideMinutes <= targetMinutes) prevTide = tides.events[i];
-    if (tideMinutes >= targetMinutes && !nextTide) nextTide = tides.events[i];
-  }
-
+  const { prev: prevTide, next: nextTide } = getClosestTides(tides.events, selectedHour, selectedMinute);
   if ((prevTide || nextTide) && tides.events.length > 0) {
-    html += '<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>';
+    html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
     if (prevTide) {
-      const timeDiff = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-      html += '<div class="detail-row">← Previous ' + prevTide.type + ' at ' + prevTide.time + ' (' + prevTide.height.toFixed(2) + 'm) - ' + Math.floor(timeDiff / 60) + 'h ' + (timeDiff % 60) + 'm before</div>';
+      const diff = Math.abs((selectedHour*60+selectedMinute) - (parseInt(prevTide.time.split(':')[0])*60 + parseInt(prevTide.time.split(':')[1])));
+      html += `<div class="detail-row">← Previous ${prevTide.type} at ${prevTide.time} (${prevTide.height.toFixed(2)}m) - ${Math.floor(diff/60)}h ${diff%60}m before</div>`;
     }
     if (nextTide) {
-      const timeDiff = Math.abs((parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])) - targetMinutes);
-      html += '<div class="detail-row">→ Next ' + nextTide.type + ' at ' + nextTide.time + ' (' + nextTide.height.toFixed(2) + 'm) - ' + Math.floor(timeDiff / 60) + 'h ' + (timeDiff % 60) + 'm after</div>';
+      const diff = Math.abs((parseInt(nextTide.time.split(':')[0])*60 + parseInt(nextTide.time.split(':')[1])) - (selectedHour*60+selectedMinute));
+      html += `<div class="detail-row">→ Next ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m) - ${Math.floor(diff/60)}h ${diff%60}m after</div>`;
     }
-    html += '<div class="detail-row"><strong>🌊 Tide Direction:</strong> ' + tideDirection + '</div>';
-    if (tides.tideType !== 'Unknown') {
-      html += '<div class="detail-row">' + (tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)') + '</div>';
-    }
-    html += '<div class="detail-row">' + tides.moonIcon + ' ' + tides.moonPhase + '</div>';
-  } else if (tides.events.length === 0) {
-    html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
-  }
-
-  const panel = document.getElementById('detailedPanel');
-  if (panel) panel.innerHTML = html;
+    html += `<div class="detail-row"><strong>🌊 Tide Direction:</strong> ${tideDir}</div>`;
+    if (tides.tideType !== 'Unknown') html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)'}</div>`;
+    html += `<div class="detail-row">${tides.moonIcon} ${tides.moonPhase}</div>`;
+  } else if (tides.events.length === 0) html += '<div class="detail-row">⚠️ Tide data unavailable for this station/date</div>';
+  document.getElementById('detailedPanel').innerHTML = html;
 }
 
 function initChips() {
-  const categories = ["Reef", "Wreck", "Drift", "Deep", "Night", "Snorkel", "Kelp", "Photography", "Navigation", "Training", "Citizen Science", "Fitness Test"];
+  const categories = ["Reef","Wreck","Drift","Deep","Night","Snorkel","Kelp","Photography","Navigation","Training","Citizen Science","Fitness Test"];
   const container = document.getElementById('chipsContainer');
   if (!container) return;
-
   let html = '';
-  for (let i = 0; i < categories.length; i++) {
-    html += '<span data-chip="' + categories[i] + '">' + categories[i] + '</span>';
-  }
+  categories.forEach(c => html += `<span data-chip="${c}">${c}</span>`);
   container.innerHTML = html;
-
-  const chips = document.querySelectorAll('.chips span');
-  for (let i = 0; i < chips.length; i++) {
-    chips[i].addEventListener('click', function() {
+  document.querySelectorAll('.chips span').forEach(chip => {
+    chip.addEventListener('click', () => {
       hapticFeedback();
-      this.classList.toggle('active-chip');
-      const chipName = this.dataset.chip;
-      if (this.classList.contains('active-chip')) {
-        selectedChips.add(chipName);
-      } else {
-        selectedChips.delete(chipName);
-      }
+      chip.classList.toggle('active-chip');
+      const name = chip.dataset.chip;
+      if (chip.classList.contains('active-chip')) selectedChips.add(name);
+      else selectedChips.delete(name);
       saveUserPreferences();
     });
-  }
+  });
   renderChips();
 }
 
 function saveCurrentPlan() {
-  const diveSiteElem = document.getElementById('diveSite');
-  const diveSite = diveSiteElem ? diveSiteElem.value : 'Unnamed Dive';
+  const diveSite = document.getElementById('diveSite')?.value || 'Unnamed Dive';
   const planName = prompt('Enter a name for this dive plan:', diveSite);
   if (!planName) return;
-
   (async function() {
     const exportText = await getFormattedExportText();
-    const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
-    let diveType = "Boat";
-    for (let i = 0; i < diveTypeRadios.length; i++) {
-      if (diveTypeRadios[i].checked) {
-        diveType = diveTypeRadios[i].value;
-        break;
-      }
-    }
+    const diveType = document.querySelector('input[name="diveType"]:checked')?.value || 'Boat';
     const maxDepthElem = document.getElementById('maxDepth');
     const plan = {
-      id: Date.now(),
-      name: planName,
-      exportText: exportText,
-      station: currentStation.name,
-      date: formatDateDisplay(currentDate),
-      time: getSelectedTime(),
-      diveType: diveType,
-      maxDepth: maxDepthElem ? maxDepthElem.value : '',
+      id: Date.now(), name: planName, exportText: exportText,
+      station: currentStation.name, date: formatDateDisplay(currentDate), time: getSelectedTime(),
+      diveType, maxDepth: maxDepthElem ? maxDepthElem.value : '',
       categories: Array.from(selectedChips)
     };
-
     savedPlans.unshift(plan);
     if (savedPlans.length > 10) savedPlans.pop();
     localStorage.setItem('divesense_plans', JSON.stringify(savedPlans));
@@ -1202,89 +758,45 @@ function saveCurrentPlan() {
 }
 
 function deleteSavedPlan(planId) {
-  savedPlans = savedPlans.filter(function(p) { return p.id !== planId; });
+  savedPlans = savedPlans.filter(p => p.id !== planId);
   localStorage.setItem('divesense_plans', JSON.stringify(savedPlans));
   renderSavedPlans();
   showNotification('Plan deleted');
 }
 
 function loadSavedPlan(plan) {
-  const savedStation = stations.find(function(s) { return s.name === plan.station; });
+  const savedStation = stations.find(s => s.name === plan.station);
   if (savedStation) currentStation = savedStation;
   currentDate = new Date(plan.date.split('-').reverse().join('-'));
-  const timeParts = plan.time.split(':');
-  currentHour = parseInt(timeParts[0]);
-  currentMinute = parseInt(timeParts[1]);
-
+  const parts = plan.time.split(':');
+  currentHour = parseInt(parts[0]); currentMinute = parseInt(parts[1]);
   const radios = document.querySelectorAll('input[name="diveType"]');
-  for (let i = 0; i < radios.length; i++) {
-    if (radios[i].value === plan.diveType) {
-      radios[i].checked = true;
-      break;
-    }
-  }
-
+  for (let r of radios) if (r.value === plan.diveType) r.checked = true;
   const maxDepthElem = document.getElementById('maxDepth');
   if (maxDepthElem) maxDepthElem.value = plan.maxDepth;
-
   selectedChips.clear();
-  for (let i = 0; i < plan.categories.length; i++) {
-    selectedChips.add(plan.categories[i]);
-  }
-
-  initStations();
-  initTimeSpinners();
-  buildCalendar();
-  loadAllData();
-
-  setTimeout(function() {
-    renderChips();
-    showNotification('Loaded: ' + plan.name);
-  }, 100);
+  plan.categories.forEach(cat => selectedChips.add(cat));
+  initStations(); initTimeSpinners(); buildCalendar(); loadAllData();
+  setTimeout(() => { renderChips(); showNotification('Loaded: ' + plan.name); }, 100);
 }
 
 function renderSavedPlans() {
   const container = document.getElementById('savedPlansContainer');
   if (!container) return;
-
-  if (savedPlans.length === 0) {
-    container.innerHTML = '<div class="saved-plans-empty">No saved plans yet. Save a plan below.</div>';
-    return;
-  }
-
+  if (savedPlans.length === 0) { container.innerHTML = '<div class="saved-plans-empty">No saved plans yet. Save a plan below.</div>'; return; }
   let html = '';
-  for (let i = 0; i < savedPlans.length; i++) {
-    const plan = savedPlans[i];
-    html += '<div class="saved-plan-item" data-plan-id="' + plan.id + '">';
-    html += '<div><div class="saved-plan-name">' + escapeHtml(plan.name) + '</div>';
-    html += '<div class="saved-plan-details">' + plan.station + ' | ' + plan.date + ' | ' + plan.time + '</div></div>';
-    html += '<button class="delete-plan-btn" data-plan-id="' + plan.id + '">🗑️</button>';
-    html += '</div>';
-  }
+  savedPlans.forEach(plan => {
+    html += `<div class="saved-plan-item" data-plan-id="${plan.id}"><div><div class="saved-plan-name">${escapeHtml(plan.name)}</div><div class="saved-plan-details">${plan.station} | ${plan.date} | ${plan.time}</div></div><button class="delete-plan-btn" data-plan-id="${plan.id}">🗑️</button></div>`;
+  });
   container.innerHTML = html;
-
-  const items = document.querySelectorAll('.saved-plan-item');
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
+  document.querySelectorAll('.saved-plan-item').forEach(item => {
     const planId = parseInt(item.dataset.planId);
-    const plan = savedPlans.find(function(p) { return p.id === planId; });
-    if (plan) {
-      item.addEventListener('click', function(e) {
-        if (!e.target.classList.contains('delete-plan-btn')) {
-          loadSavedPlan(plan);
-        }
-      });
-    }
-  }
-
-  const deleteBtns = document.querySelectorAll('.delete-plan-btn');
-  for (let i = 0; i < deleteBtns.length; i++) {
-    deleteBtns[i].addEventListener('click', function(e) {
-      e.stopPropagation();
-      const planId = parseInt(this.dataset.planId);
-      deleteSavedPlan(planId);
-    });
-  }
+    const plan = savedPlans.find(p => p.id === planId);
+    if (plan) item.addEventListener('click', e => { if (!e.target.classList.contains('delete-plan-btn')) loadSavedPlan(plan); });
+  });
+  document.querySelectorAll('.delete-plan-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); deleteSavedPlan(parseInt(btn.dataset.planId)); });
+  });
 }
 
 function escapeHtml(text) {
@@ -1298,7 +810,7 @@ function showNotification(message) {
   notification.textContent = message;
   notification.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(47, 255, 238, 0.9); color: #020B24; padding: 10px 20px; border-radius: 30px; font-size: 12px; font-weight: bold; z-index: 2000; animation: fadeOut 2s forwards;';
   document.body.appendChild(notification);
-  setTimeout(function() { notification.remove(); }, 2000);
+  setTimeout(() => notification.remove(), 2000);
 }
 
 const maxDepthInput = document.getElementById('maxDepth');
@@ -1306,12 +818,8 @@ if (maxDepthInput) {
   maxDepthInput.addEventListener('change', function(e) {
     const depth = parseInt(e.target.value);
     if (depth >= 21) {
-      const deepChip = Array.from(document.querySelectorAll('.chips span')).find(function(c) { return c.dataset.chip === 'Deep'; });
-      if (deepChip && !deepChip.classList.contains('active-chip')) {
-        deepChip.classList.add('active-chip');
-        selectedChips.add('Deep');
-        renderChips();
-      }
+      const deepChip = Array.from(document.querySelectorAll('.chips span')).find(c => c.dataset.chip === 'Deep');
+      if (deepChip && !deepChip.classList.contains('active-chip')) { deepChip.classList.add('active-chip'); selectedChips.add('Deep'); renderChips(); }
     }
     e.target.style.borderColor = (depth < 5 || depth > 45) ? '#ff4444' : '#1AA7A7';
   });
@@ -1322,31 +830,24 @@ if (whatsappBtn) {
   whatsappBtn.addEventListener('click', async function(e) {
     e.preventDefault();
     const text = await getFormattedExportText();
-    const encodedText = encodeURIComponent(text);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
     if (isIOS) {
       await navigator.clipboard.writeText(text);
-      const userConfirmed = confirm("✅ Dive plan copied to clipboard!\n\nTap 'OK' to open WhatsApp, then paste the message.");
-      if (userConfirmed) {
+      if (confirm("✅ Dive plan copied to clipboard!\n\nTap 'OK' to open WhatsApp, then paste the message."))
         window.location.href = "whatsapp://";
-      }
     } else {
-      window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
   });
 }
-
 const emailBtn = document.getElementById('emailBtn');
 if (emailBtn) {
   emailBtn.addEventListener('click', async function() {
     const text = await getFormattedExportText();
-    const diveSiteElem = document.getElementById('diveSite');
-    const subject = 'Dive Plan - ' + (diveSiteElem ? diveSiteElem.value : 'Dive Plan') + ' - ' + formatDateDisplay(currentDate);
-    window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
+    const subject = `Dive Plan - ${document.getElementById('diveSite')?.value || 'Dive Plan'} - ${formatDateDisplay(currentDate)}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
   });
 }
-
 const copyBtn = document.getElementById('copyBtn');
 if (copyBtn) {
   copyBtn.addEventListener('click', async function() {
@@ -1355,12 +856,9 @@ if (copyBtn) {
     showNotification('Plan copied to clipboard!');
   });
 }
-
 const savePlanBtn = document.getElementById('savePlanBtn');
 if (savePlanBtn) {
-  savePlanBtn.addEventListener('click', function() {
-    saveCurrentPlan();
-  });
+  savePlanBtn.addEventListener('click', function() { saveCurrentPlan(); });
 }
 
 async function loadAllData() {
@@ -1370,30 +868,21 @@ async function loadAllData() {
     await updateHourly();
     await updateDetailed();
     saveUserPreferences();
-  } catch (error) {
-    console.error("Error loading data:", error);
-  } finally {
-    hideLoading();
-  }
+  } catch(e) { console.error(e); }
+  finally { hideLoading(); }
 }
 
 function scrollToTopOnLoad() {
-  window.scrollTo(0, 0);
-  setTimeout(function() { window.scrollTo(0, 0); }, 0);
-  setTimeout(function() { window.scrollTo(0, 0); }, 50);
-  window.addEventListener('load', function() { window.scrollTo(0, 0); });
+  window.scrollTo(0,0);
+  setTimeout(() => window.scrollTo(0,0), 0);
+  setTimeout(() => window.scrollTo(0,0), 50);
+  window.addEventListener('load', () => window.scrollTo(0,0));
 }
-
-if ('scrollRestoration' in history) {
-  history.scrollRestoration = 'manual';
-}
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 function init() {
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-  }
-  window.scrollTo(0, 0);
-
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.scrollTo(0,0);
   loadUserPreferences();
   loadSavedPlans();
   initStations();
@@ -1402,13 +891,9 @@ function init() {
   initChips();
   buildCalendar();
   loadAllData();
-
-  setTimeout(function() { window.scrollTo(0, 0); }, 100);
-  setTimeout(function() { window.scrollTo(0, 0); }, 500);
+  setTimeout(() => window.scrollTo(0,0), 100);
+  setTimeout(() => window.scrollTo(0,0), 500);
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
