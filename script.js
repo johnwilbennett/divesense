@@ -1104,13 +1104,18 @@ async function updateHourly() {
     return;
   }
   
+  // FIXED: Correct tide direction logic with proper slack handling
   function getTideDirectionWithFallback(tideEvents, hour) {
-    if (!tideEvents || tideEvents.length === 0) return "No Data";
+    // No tide data available
+    if (!tideEvents || tideEvents.length === 0) {
+      return "No Data";
+    }
     
     const targetMinutes = hour * 60;
     let prevTide = null;
     let nextTide = null;
     
+    // Find the tide before and after the target hour
     for (let i = 0; i < tideEvents.length; i++) {
       const tideParts = tideEvents[i].time.split(':');
       const tideMinutes = parseInt(tideParts[0]) * 60 + parseInt(tideParts[1]);
@@ -1122,22 +1127,73 @@ async function updateHourly() {
       }
     }
     
-    if (!prevTide && nextTide) {
-      return nextTide.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
+    // Helper function to check if within 40 minutes of a tide
+    function isWithinSlack(tide, targetMin) {
+      if (!tide) return false;
+      const tideMin = parseInt(tide.time.split(':')[0]) * 60 + parseInt(tide.time.split(':')[1]);
+      return Math.abs(targetMin - tideMin) <= 40;
     }
     
-    if (prevTide && !nextTide) {
-      return prevTide.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
+    // Get the first tide of the day
+    const firstTide = tideEvents[0];
+    // Get the last tide of the day
+    const lastTide = tideEvents[tideEvents.length - 1];
+    
+    // CASE 1: Before the first tide of the day (including slack period)
+    if (targetMinutes < (parseInt(firstTide.time.split(':')[0]) * 60 + parseInt(firstTide.time.split(':')[1]))) {
+      // Check if within 40 minutes BEFORE first tide (slack water)
+      if (isWithinSlack(firstTide, targetMinutes)) {
+        return "Slack Water ⚡";
+      }
+      // Otherwise, determine direction based on first tide type
+      // If first tide is HIGH → water is FLOODING (coming in)
+      // If first tide is LOW → water is EBBING (going out)
+      if (firstTide.type === "High") {
+        return "Flooding 🌊⬆️";
+      } else {
+        return "Ebbing 🌊⬇️";
+      }
     }
     
+    // CASE 2: After the last tide of the day (including slack period)
+    if (targetMinutes > (parseInt(lastTide.time.split(':')[0]) * 60 + parseInt(lastTide.time.split(':')[1]))) {
+      // Check if within 40 minutes AFTER last tide (slack water)
+      if (isWithinSlack(lastTide, targetMinutes)) {
+        return "Slack Water ⚡";
+      }
+      // Otherwise, determine direction based on last tide type
+      // If last tide is HIGH → water is EBBING (going out)
+      // If last tide is LOW → water is FLOODING (coming in)
+      if (lastTide.type === "High") {
+        return "Ebbing 🌊⬇️";
+      } else {
+        return "Flooding 🌊⬆️";
+      }
+    }
+    
+    // CASE 3: Between two tides (including slack periods around each)
     if (prevTide && nextTide) {
-      const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-      const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
+      const prevTideMinutes = parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1]);
+      const nextTideMinutes = parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1]);
       
-      if (timeToPrev <= 40 || timeToNext <= 40) return "Slack Water ⚡";
+      // Check if within 40 minutes of PREVIOUS tide (slack water)
+      if (Math.abs(targetMinutes - prevTideMinutes) <= 40) {
+        return "Slack Water ⚡";
+      }
       
-      if (prevTide.type === "High" && nextTide.type === "Low") return "Ebbing 🌊⬇️";
-      if (prevTide.type === "Low" && nextTide.type === "High") return "Flooding 🌊⬆️";
+      // Check if within 40 minutes of NEXT tide (slack water)
+      if (Math.abs(targetMinutes - nextTideMinutes) <= 40) {
+        return "Slack Water ⚡";
+      }
+      
+      // Determine direction based on tide sequence
+      // High → Low = Ebbing (water going OUT)
+      // Low → High = Flooding (water coming IN)
+      if (prevTide.type === "High" && nextTide.type === "Low") {
+        return "Ebbing 🌊⬇️";
+      } else if (prevTide.type === "Low" && nextTide.type === "High") {
+        return "Flooding 🌊⬆️";
+      }
     }
     
     return "No Data";
@@ -1205,17 +1261,42 @@ async function updateDetailed() {
     if (tideMinutes >= targetMinutes && !nextTide) nextTide = tides.events[i];
   }
   
-  const isSlackWater = isSlackWaterTime(tides.events, selectedHour, selectedMinute);
-  
+  // FIXED: Correct tide direction logic for detailed view
   let tideDirection = "No Data";
-  if (!prevTide && nextTide) {
-    tideDirection = nextTide.type === "High" ? "Flooding (Incoming) 🌊⬆️" : "Ebbing (Outgoing) 🌊⬇️";
-  } else if (prevTide && !nextTide) {
-    tideDirection = prevTide.type === "High" ? "Ebbing (Outgoing) 🌊⬇️" : "Flooding (Incoming) 🌊⬆️";
-  } else if (prevTide && nextTide) {
-    const timeToPrev = Math.abs(targetMinutes - (parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1])));
-    const timeToNext = Math.abs(targetMinutes - (parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1])));
-    if (timeToPrev <= 40 || timeToNext <= 40) {
+  
+  // Helper function for slack water check
+  function isWithinSlackDetailed(tide, targetMin) {
+    if (!tide) return false;
+    const tideMin = parseInt(tide.time.split(':')[0]) * 60 + parseInt(tide.time.split(':')[1]);
+    return Math.abs(targetMin - tideMin) <= 40;
+  }
+  
+  const targetMinutesDetailed = selectedHour * 60 + selectedMinute;
+  const firstTide = tides.events[0];
+  const lastTide = tides.events[tides.events.length - 1];
+  
+  // CASE 1: Before first tide
+  if (targetMinutesDetailed < (parseInt(firstTide.time.split(':')[0]) * 60 + parseInt(firstTide.time.split(':')[1]))) {
+    if (isWithinSlackDetailed(firstTide, targetMinutesDetailed)) {
+      tideDirection = "Slack Water ⚡";
+    } else {
+      tideDirection = firstTide.type === "High" ? "Flooding (Incoming) 🌊⬆️" : "Ebbing (Outgoing) 🌊⬇️";
+    }
+  }
+  // CASE 2: After last tide
+  else if (targetMinutesDetailed > (parseInt(lastTide.time.split(':')[0]) * 60 + parseInt(lastTide.time.split(':')[1]))) {
+    if (isWithinSlackDetailed(lastTide, targetMinutesDetailed)) {
+      tideDirection = "Slack Water ⚡";
+    } else {
+      tideDirection = lastTide.type === "High" ? "Ebbing (Outgoing) 🌊⬇️" : "Flooding (Incoming) 🌊⬆️";
+    }
+  }
+  // CASE 3: Between tides
+  else if (prevTide && nextTide) {
+    const prevTideMinutes = parseInt(prevTide.time.split(':')[0]) * 60 + parseInt(prevTide.time.split(':')[1]);
+    const nextTideMinutes = parseInt(nextTide.time.split(':')[0]) * 60 + parseInt(nextTide.time.split(':')[1]);
+    
+    if (Math.abs(targetMinutesDetailed - prevTideMinutes) <= 40 || Math.abs(targetMinutesDetailed - nextTideMinutes) <= 40) {
       tideDirection = "Slack Water ⚡";
     } else if (prevTide.type === "High" && nextTide.type === "Low") {
       tideDirection = "Ebbing (Outgoing) 🌊⬇️";
@@ -1247,7 +1328,7 @@ async function updateDetailed() {
     html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   }
   
-  if (isSlackWater && tides.events.length > 0) {
+  if (isSlackWaterTime(tides.events, selectedHour, selectedMinute)) {
     html += '<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>';
   }
   
