@@ -4,192 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dive Emergency Plan | Sultans of Surf</title>
-    <!-- PapaParse for reliable CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #eef5fc;
-            color: #1a2c3e;
-        }
-        .form-container, .plan-output {
-            background: white;
-            border-radius: 20px;
-            padding: 28px 32px;
-            margin-bottom: 32px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-        }
-        h1 {
-            margin-top: 0;
-            font-size: 1.9rem;
-            color: #0b4f6c;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: space-between;
-        }
-        label {
-            font-weight: 600;
-            display: inline-block;
-            width: 230px;
-            margin-top: 12px;
-            vertical-align: top;
-            color: #0f4b5c;
-        }
-        input, select, textarea {
-            padding: 8px 12px;
-            margin: 6px 0 12px 0;
-            width: 340px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            font-size: 0.95rem;
-        }
-        .section {
-            margin: 28px 0 20px 0;
-            padding: 18px 22px;
-            background: #f8fafc;
-            border-left: 5px solid #0f7b9e;
-            border-radius: 16px;
-        }
-        button {
-            background: #0f7b9e;
-            color: white;
-            padding: 12px 28px;
-            border: none;
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: bold;
-        }
-        .print-btn {
-            background: #2b7e3a;
-            margin-left: 12px;
-        }
-        .loading {
-            background: #eef2f5;
-            padding: 20px;
-            border-radius: 20px;
-            text-align: center;
-        }
-        @media (max-width: 760px) {
-            label { width: 100%; display: block; }
-            input, select { width: 100%; }
-        }
-        @media print {
-            .form-container, .print-btn, #generateBtn { display: none; }
-            .plan-output { margin: 0; padding: 0; }
-        }
-        .error-msg {
-            background: #ffe6e6;
-            border-left: 5px solid #cc0000;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            color: #990000;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1280px; margin: 0 auto; padding: 20px; background: #eef5fc; }
+        .form-container, .plan-output { background: white; border-radius: 20px; padding: 28px 32px; margin-bottom: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        h1 { color: #0b4f6c; }
+        label { font-weight: 600; display: inline-block; width: 230px; margin-top: 12px; }
+        input, select { padding: 8px 12px; margin: 6px 0 12px; width: 340px; border-radius: 12px; border: 1px solid #cbd5e1; }
+        .section { background: #f8fafc; border-left: 5px solid #0f7b9e; padding: 18px 22px; margin: 28px 0; border-radius: 16px; }
+        button { background: #0f7b9e; color: white; padding: 12px 28px; border: none; border-radius: 40px; cursor: pointer; }
+        .print-btn { background: #2b7e3a; margin-left: 12px; }
+        .loading { background: #eef2f5; padding: 20px; text-align: center; }
+        @media (max-width: 760px) { label, input, select { width: 100%; } }
+        @media print { .form-container, .print-btn, #generateBtn { display: none; } }
+        .error-msg { background: #ffe6e6; border-left: 5px solid #cc0000; padding: 15px; margin-bottom: 20px; border-radius: 12px; }
     </style>
 </head>
 <body>
-
 <div class="form-container">
     <h1>🧜‍♂️ Dive Emergency Plan <small>Sultans of Surf</small></h1>
     <div id="loadingMsg" class="loading">🌊 Loading dive site database ...</div>
     <form id="emergencyForm" style="display:none;">
-        <label>📍 Dive Site:</label>
-        <select id="diveSiteSelect" required></select><br>
-
-        <label>🔄 Alternative Site:</label>
-        <select id="altSiteSelect"><option value="">-- None --</option></select><br>
-
-        <label>📡 Local VHF Station:</label>
-        <select id="vhfSelect" required></select><br>
-
-        <label>🚤/🏖️ Dive type:</label>
-        <select id="diveType" required>
-            <option value="boat">Boat dive</option>
-            <option value="shore">Shore dive</option>
-        </select><br>
-
-        <label>👤 Shore Marshall Name:</label>
-        <input type="text" id="shoreMarshall" required><br>
-
-        <label>📞 Shore Marshall Phone:</label>
-        <input type="tel" id="shorePhone" required><br>
-
+        <label>📍 Dive Site:</label> <select id="diveSiteSelect" required></select><br>
+        <label>🔄 Alternative Site:</label> <select id="altSiteSelect"><option value="">-- None --</option></select><br>
+        <label>📡 Local VHF Station:</label> <select id="vhfSelect" required></select><br>
+        <label>🚤/🏖️ Dive type:</label> <select id="diveType" required><option value="boat">Boat dive</option><option value="shore">Shore dive</option></select><br>
+        <label>👤 Shore Marshall Name:</label> <input type="text" id="shoreMarshall" required><br>
+        <label>📞 Shore Marshall Phone:</label> <input type="tel" id="shorePhone" required><br>
         <label>⚓ Club Diving Officer (DO):</label>
         <select id="clubDOSelect"><option value="">-- Select --</option></select>
         <input type="text" id="clubDOFree" placeholder="Or enter manually"><br>
-
         <div id="dynamicO2FirstAid"></div>
-
         <button type="button" id="generateBtn">📋 Generate Emergency Plan</button>
     </form>
 </div>
-
 <div id="planOutput" class="plan-output" style="display:none;"></div>
 
 <script>
-    // Your live Google Sheets URLs
     const CSV_URLS = {
         diveSites: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXu-IY1-3pFWlh037gXUebnhmOk5qHBNAXfLLqg_AcgnTVXnWLGbJ4PE8RxcYzgllamGzHDG9ZIZpm/pub?gid=643347022&single=true&output=csv',
         clubContacts: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXu-IY1-3pFWlh037gXUebnhmOk5qHBNAXfLLqg_AcgnTVXnWLGbJ4PE8RxcYzgllamGzHDG9ZIZpm/pub?gid=0&single=true&output=csv'
     };
 
-    let diveSites = [];
-    let clubContacts = [];
-    let localVHFs = [];
+    let diveSites = [], clubContacts = [], localVHFs = [];
 
-    // Robust CSV fetch using PapaParse
     function fetchCSV(url) {
         return new Promise((resolve, reject) => {
-            Papa.parse(url, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    if (results.errors && results.errors.length) {
-                        console.warn('Parsing warnings:', results.errors);
-                    }
-                    resolve(results.data);
-                },
-                error: (err) => reject(err)
-            });
+            Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: results => resolve(results.data), error: reject });
         });
+    }
+
+    function getColumnValue(row, possibleNames) {
+        for (let name of possibleNames) {
+            if (row[name] !== undefined) return row[name];
+            const lowerName = name.toLowerCase();
+            for (let key in row) {
+                if (key.toLowerCase() === lowerName) return row[key];
+            }
+        }
+        return '';
     }
 
     async function loadAllData() {
         try {
-            const [sitesData, contactsData] = await Promise.all([
-                fetchCSV(CSV_URLS.diveSites),
-                fetchCSV(CSV_URLS.clubContacts)
-            ]);
+            const [sitesData, contactsData] = await Promise.all([fetchCSV(CSV_URLS.diveSites), fetchCSV(CSV_URLS.clubContacts)]);
+            if (!sitesData.length) throw new Error('No dive sites found');
             
-            // Validate that we have expected columns
-            if (sitesData.length === 0) throw new Error('No dive sites found');
-            const sample = sitesData[0];
-            const requiredCols = ['id', 'name', 'gridRef', 'localVHF_name', 'localVHF_channel', 'mobileCoverage'];
-            const missing = requiredCols.filter(col => !(col in sample));
-            if (missing.length) {
-                console.warn('Missing columns:', missing);
-                // But we'll still try to proceed
-            }
+            diveSites = sitesData.map(row => ({
+                id: getColumnValue(row, ['id', 'ID']),
+                name: getColumnValue(row, ['name', 'Name', 'site_name']),
+                gridRef: getColumnValue(row, ['gridRef', 'grid_ref', 'Grid Reference', 'Location']),
+                localVHF_name: getColumnValue(row, ['localVHF_name', 'local_vhf_name', 'VHF Name', 'Local VHF Station', 'VHF Station']),
+                localVHF_channel: getColumnValue(row, ['localVHF_channel', 'local_vhf_channel', 'VHF Channel', 'Channel', 'CH']),
+                mobileCoverage: getColumnValue(row, ['mobileCoverage', 'mobile_coverage', 'Mobile Coverage', 'Coverage']),
+                defaultO2Boat: getColumnValue(row, ['defaultO2Boat', 'o2_boat', 'O2 Boat']),
+                defaultFirstAidBoat: getColumnValue(row, ['defaultFirstAidBoat', 'first_aid_boat', 'First Aid Boat']),
+                defaultO2Shore: getColumnValue(row, ['defaultO2Shore', 'o2_shore', 'O2 Shore']),
+                defaultFirstAidShore: getColumnValue(row, ['defaultFirstAidShore', 'first_aid_shore', 'First Aid Shore']),
+                evMake: getColumnValue(row, ['evMake', 'ev_make', 'Vehicle Make']),
+                evLocation: getColumnValue(row, ['evLocation', 'ev_location', 'Vehicle Location']),
+                evColour: getColumnValue(row, ['evColour', 'ev_colour', 'Vehicle Colour']),
+                evReg: getColumnValue(row, ['evReg', 'ev_reg', 'Registration']),
+                nearestO2_name: getColumnValue(row, ['nearestO2_name', 'nearest_o2_name', 'O2 Name']),
+                nearestO2_location: getColumnValue(row, ['nearestO2_location', 'nearest_o2_location', 'O2 Location']),
+                nearestO2_phone: getColumnValue(row, ['nearestO2_phone', 'nearest_o2_phone', 'O2 Phone']),
+                nearestHospital_name: getColumnValue(row, ['nearestHospital_name', 'hospital_name']),
+                nearestHospital_services: getColumnValue(row, ['nearestHospital_services', 'hospital_services']),
+                nearestHospital_address: getColumnValue(row, ['nearestHospital_address', 'hospital_address']),
+                nearestHospital_phone: getColumnValue(row, ['nearestHospital_phone', 'hospital_phone']),
+                gp_name: getColumnValue(row, ['gp_name', 'gp Name']),
+                gp_phone1: getColumnValue(row, ['gp_phone1', 'gp_phone', 'GP Phone']),
+                gp_phone2: getColumnValue(row, ['gp_phone2', 'gp_phone_alt']),
+                gp_address: getColumnValue(row, ['gp_address', 'gp Address']),
+                garda_station: getColumnValue(row, ['garda_station', 'garda Station']),
+                garda_address: getColumnValue(row, ['garda_address', 'garda Address']),
+                garda_localPhone: getColumnValue(row, ['garda_localPhone', 'garda_phone', 'Garda Phone']),
+                recompression_info: getColumnValue(row, ['recompression_info', 'recompression', 'Chamber Info'])
+            }));
             
-            diveSites = sitesData;
             clubContacts = contactsData;
             
-            // Build VHF list from diveSites
             const vhfMap = new Map();
             diveSites.forEach(site => {
                 if (site.localVHF_name && site.localVHF_channel) {
-                    vhfMap.set(site.localVHF_channel, {
-                        channel: site.localVHF_channel,
-                        name: site.localVHF_name
-                    });
+                    vhfMap.set(site.localVHF_channel, { channel: site.localVHF_channel, name: site.localVHF_name });
                 }
             });
             localVHFs = Array.from(vhfMap.values());
@@ -199,11 +118,7 @@
             document.getElementById('emergencyForm').style.display = 'block';
         } catch (err) {
             console.error(err);
-            document.getElementById('loadingMsg').innerHTML = `
-                <div class="error-msg">
-                    ❌ Failed to load data. Check that your Google Sheet is published and accessible.<br>
-                    Error: ${err.message}
-                </div>`;
+            document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">❌ Load error: ${err.message}. Check console.</div>`;
         }
     }
 
@@ -213,32 +128,27 @@
         const vhfSelect = document.getElementById('vhfSelect');
         const clubSelect = document.getElementById('clubDOSelect');
         
-        siteSelect.innerHTML = '';
-        altSelect.innerHTML = '<option value="">-- None --</option>';
-        vhfSelect.innerHTML = '';
-        clubSelect.innerHTML = '<option value="">-- Select from list --</option>';
+        siteSelect.innerHTML = ''; altSelect.innerHTML = '<option value="">-- None --</option>'; vhfSelect.innerHTML = ''; clubSelect.innerHTML = '<option value="">-- Select --</option>';
         
         diveSites.forEach(site => {
             let opt = new Option(site.name, site.id);
             siteSelect.appendChild(opt);
-            let altOpt = new Option(site.name, site.id);
-            altSelect.appendChild(altOpt);
+            altSelect.appendChild(new Option(site.name, site.id));
         });
         
         localVHFs.forEach(vhf => {
-            let opt = new Option(`${vhf.name} (CH ${vhf.channel})`, vhf.channel);
-            vhfSelect.appendChild(opt);
+            // FIX: Remove "CH " prefix – just show the channel number
+            vhfSelect.appendChild(new Option(`${vhf.name} (${vhf.channel})`, vhf.channel));
         });
         
         clubContacts.forEach(contact => {
             let display = `${contact.name} - ${contact.phone}`;
             if (contact.role) display += ` (${contact.role})`;
-            let opt = new Option(display, JSON.stringify(contact));
-            clubSelect.appendChild(opt);
+            clubSelect.appendChild(new Option(display, JSON.stringify(contact)));
         });
         
-        document.getElementById('diveType').addEventListener('change', updateConditionalFields);
-        document.getElementById('diveSiteSelect').addEventListener('change', updateConditionalFields);
+        document.getElementById('diveType').addEventListener('change', () => updateConditionalFields());
+        document.getElementById('diveSiteSelect').addEventListener('change', () => updateConditionalFields());
         updateConditionalFields();
     }
     
@@ -247,73 +157,38 @@
         const siteId = document.getElementById('diveSiteSelect').value;
         const site = diveSites.find(s => s.id == siteId);
         if (!site) return;
-        
         const container = document.getElementById('dynamicO2FirstAid');
         container.innerHTML = '';
         
         let equipDiv = document.createElement('div');
         equipDiv.className = 'section';
         if (diveType === 'boat') {
-            equipDiv.innerHTML = `
-                <h3>⛵ Boat Equipment</h3>
-                <label>O2 on Boat:</label><input type="text" id="o2Boat" value="${escapeHtml(site.defaultO2Boat || '')}"><br>
-                <label>First Aid on Boat:</label><input type="text" id="firstAidBoat" value="${escapeHtml(site.defaultFirstAidBoat || '')}"><br>
-            `;
+            equipDiv.innerHTML = `<h3>⛵ Boat Equipment</h3><label>O2 on Boat:</label><input type="text" id="o2Boat" value="${escapeHtml(site.defaultO2Boat || '')}"><br><label>First Aid on Boat:</label><input type="text" id="firstAidBoat" value="${escapeHtml(site.defaultFirstAidBoat || '')}"><br>`;
         } else {
-            equipDiv.innerHTML = `
-                <h3>🏖️ Shore Equipment</h3>
-                <label>O2 Onshore:</label><input type="text" id="o2Shore" value="${escapeHtml(site.defaultO2Shore || '')}"><br>
-                <label>First Aid Onshore:</label><input type="text" id="firstAidShore" value="${escapeHtml(site.defaultFirstAidShore || '')}"><br>
-            `;
+            equipDiv.innerHTML = `<h3>🏖️ Shore Equipment</h3><label>O2 Onshore:</label><input type="text" id="o2Shore" value="${escapeHtml(site.defaultO2Shore || '')}"><br><label>First Aid Onshore:</label><input type="text" id="firstAidShore" value="${escapeHtml(site.defaultFirstAidShore || '')}"><br>`;
         }
         container.appendChild(equipDiv);
         
         let evDiv = document.createElement('div');
         evDiv.className = 'section';
-        evDiv.innerHTML = `
-            <h3>🚑 Emergency Vehicle</h3>
-            <label>Make/Model:</label><input type="text" id="evMake" value="${escapeHtml(site.evMake || '')}"><br>
-            <label>Location:</label><input type="text" id="evLocation" value="${escapeHtml(site.evLocation || '')}"><br>
-            <label>Colour:</label><input type="text" id="evColour" value="${escapeHtml(site.evColour || '')}"><br>
-            <label>Reg:</label><input type="text" id="evReg" value="${escapeHtml(site.evReg || '')}"><br>
-        `;
+        evDiv.innerHTML = `<h3>🚑 Emergency Vehicle</h3><label>Make/Model:</label><input type="text" id="evMake" value="${escapeHtml(site.evMake || '')}"><br><label>Location:</label><input type="text" id="evLocation" value="${escapeHtml(site.evLocation || '')}"><br><label>Colour:</label><input type="text" id="evColour" value="${escapeHtml(site.evColour || '')}"><br><label>Reg:</label><input type="text" id="evReg" value="${escapeHtml(site.evReg || '')}"><br>`;
         container.appendChild(evDiv);
     }
     
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
+    function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
     
     function generatePlan() {
         const siteId = document.getElementById('diveSiteSelect').value;
         const site = diveSites.find(s => s.id == siteId);
-        if (!site) {
-            alert('Please select a dive site.');
-            return;
-        }
-        
+        if (!site) return alert('Select a dive site.');
         const altSiteId = document.getElementById('altSiteSelect').value;
         const altSite = altSiteId ? diveSites.find(s => s.id == altSiteId) : null;
         const diveType = document.getElementById('diveType').value;
-        const shoreMarshall = document.getElementById('shoreMarshall').value.trim();
-        const shorePhone = document.getElementById('shorePhone').value.trim();
-        
+        const shoreMarshall = document.getElementById('shoreMarshall').value.trim() || '—';
+        const shorePhone = document.getElementById('shorePhone').value.trim() || '—';
         let clubDO = document.getElementById('clubDOSelect').value;
-        if (clubDO) {
-            try {
-                let obj = JSON.parse(clubDO);
-                clubDO = `${obj.name} - ${obj.phone}`;
-            } catch(e) { clubDO = clubDO; }
-        } else {
-            clubDO = document.getElementById('clubDOFree').value.trim();
-        }
-        if (!clubDO) clubDO = 'Not provided';
+        if (clubDO) { try { clubDO = `${JSON.parse(clubDO).name} - ${JSON.parse(clubDO).phone}`; } catch(e) {} }
+        else clubDO = document.getElementById('clubDOFree').value.trim() || 'Not provided';
         
         let o2Equipment = '', firstAidEquipment = '';
         if (diveType === 'boat') {
@@ -323,81 +198,76 @@
             o2Equipment = document.getElementById('o2Shore')?.value || site.defaultO2Shore || '';
             firstAidEquipment = document.getElementById('firstAidShore')?.value || site.defaultFirstAidShore || '';
         }
-        
         const evMake = document.getElementById('evMake')?.value || site.evMake || '';
         const evLocation = document.getElementById('evLocation')?.value || site.evLocation || '';
         const evColour = document.getElementById('evColour')?.value || site.evColour || '';
         const evReg = document.getElementById('evReg')?.value || site.evReg || '';
-        
         const vhfChannel = document.getElementById('vhfSelect').value;
         const vhfEntry = localVHFs.find(v => v.channel == vhfChannel);
-        const vhfName = vhfEntry ? vhfEntry.name : (site.localVHF_name || 'Local Coast Guard');
+        const vhfName = vhfEntry ? vhfEntry.name : (site.localVHF_name || 'Local CG');
         
-        let planHtml = `
-            <h2>🌊 DIVE EMERGENCY PLAN</h2>
-            <p><strong>📅 Date:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
-            <hr>
-            <h3>📍 Dive Site</h3>
-            <p><strong>Primary:</strong> ${escapeHtml(site.name)}<br>
-            <strong>Grid Ref:</strong> ${escapeHtml(site.gridRef || '—')}<br>
-            <strong>Alternative:</strong> ${altSite ? escapeHtml(altSite.name) : 'None'}<br>
-            <strong>Local VHF:</strong> ${escapeHtml(vhfName)} (CH ${escapeHtml(vhfChannel)})<br>
-            <strong>Emergency VHF:</strong> 16<br>
-            <strong>Mobile Coverage:</strong> ${escapeHtml(site.mobileCoverage || 'Check on site')}</p>
-            
-            <h3>👥 Personnel</h3>
-            <p><strong>Shore Marshall:</strong> ${escapeHtml(shoreMarshall)} — ${escapeHtml(shorePhone)}<br>
-            <strong>Club DO:</strong> ${escapeHtml(clubDO)}</p>
-            
-            <h3>🆘 On-site Equipment</h3>
-            <p><strong>Oxygen (${diveType}):</strong> ${escapeHtml(o2Equipment) || 'As per SOP'}<br>
-            <strong>First Aid:</strong> ${escapeHtml(firstAidEquipment) || 'As per SOP'}<br>
-            <strong>Emergency Vehicle:</strong> ${escapeHtml(evMake)} / ${escapeHtml(evColour)} / ${escapeHtml(evReg)}<br>
-            <strong>Location:</strong> ${escapeHtml(evLocation)}</p>
-            
-            <h3>🏥 Nearest Non-Diving O2</h3>
-            <p><strong>${escapeHtml(site.nearestO2_name || 'Cork University Hospital')}</strong><br>
-            ${escapeHtml(site.nearestO2_location || 'Wilton, Cork')}<br>
-            📞 ${escapeHtml(site.nearestO2_phone || '(021) 4920200')}</p>
-            
-            <h3>🚨 Coast Guard</h3>
-            <p>📞 112/999 &nbsp;|&nbsp; VHF 16</p>
-            
-            <h3>🏨 Nearest Hospital</h3>
-            <p><strong>${escapeHtml(site.nearestHospital_name || 'Cork University Hospital')}</strong><br>
-            ${escapeHtml(site.nearestHospital_services || 'A&E')}<br>
-            ${escapeHtml(site.nearestHospital_address || 'Wilton, Cork')}<br>
-            📞 ${escapeHtml(site.nearestHospital_phone || '(021) 4920200')}</p>
-            
-            <h3>👨‍⚕️ GP / Out of Hours</h3>
-            <p><strong>${escapeHtml(site.gp_name || 'SouthDoc')}</strong><br>
-            📞 ${escapeHtml(site.gp_phone1 || '1850 335 999')} ${site.gp_phone2 ? '/ ' + escapeHtml(site.gp_phone2) : ''}<br>
-            ${escapeHtml(site.gp_address || 'Kinsale')}</p>
-            
-            <h3>👮 Garda</h3>
-            <p><strong>${escapeHtml(site.garda_station || 'Kinsale')}</strong><br>
-            ${escapeHtml(site.garda_address || 'Church Square')}<br>
-            📞 ${escapeHtml(site.garda_localPhone || '(021) 477 9250')}</p>
-            
-            <h3>🫧 Recompression Chamber</h3>
-            <p>⚠️ Activated via Coast Guard. ${escapeHtml(site.recompression_info || 'Galway / Craigavon')}</p>
-            <hr>
-            <p><em>Brief all divers on O2, first aid, and vehicle location.</em></p>
-        `;
+        // FIX: Remove "CH " prefix from display
+        const vhfDisplay = `${vhfName} (${vhfChannel})`;
         
-        const outputDiv = document.getElementById('planOutput');
-        outputDiv.innerHTML = planHtml;
-        outputDiv.style.display = 'block';
+        let html = `<h2>🌊 DIVE EMERGENCY PLAN</h2>
+        <p><strong>Date of Plan Created:</strong> ${new Date().toLocaleString()}</p>
+        <hr>
+        <h3>📍 Dive Site</h3>
+        <p><strong>Primary:</strong> ${escapeHtml(site.name)}<br>
+        <strong>GPS Coordinates:</strong> ${escapeHtml(site.gridRef || '—')}<br>
+        <strong>Alternative:</strong> ${altSite ? escapeHtml(altSite.name) : 'None'}<br>
+        <strong>Local VHF:</strong> ${escapeHtml(vhfDisplay)}<br>
+        <strong>Emergency VHF:</strong> 16<br>
+        <strong>Mobile Coverage:</strong> ${escapeHtml(site.mobileCoverage || 'Not Confirmed')}</p>
         
+        <h3>👥 Personnel</h3>
+        <p><strong>Shore Marshall:</strong> ${escapeHtml(shoreMarshall)} — ${escapeHtml(shorePhone)}<br>
+        <strong>Club DO:</strong> ${escapeHtml(clubDO)}</p>
+        
+        <h3>🆘 On-site Equipment</h3>
+        <p><strong>Oxygen (${diveType}):</strong> ${escapeHtml(o2Equipment) || 'As per SOP'}<br>
+        <strong>First Aid:</strong> ${escapeHtml(firstAidEquipment) || 'As per SOP'}<br>
+        <strong>Emergency Vehicle:</strong> ${escapeHtml(evMake)} / ${escapeHtml(evColour)} / ${escapeHtml(evReg)}<br>
+        <strong>Location:</strong> ${escapeHtml(evLocation)}</p>
+        
+        <!-- REMOVED: Nearest Non-Diving O2 section -->
+        
+        <h3>🚨 Coast Guard</h3>
+        <p>📞 112/999 &nbsp;|&nbsp; VHF 16</p>
+        
+        <h3>🏨 Nearest Hospital</h3>
+        <p><strong>${escapeHtml(site.nearestHospital_name || 'Not specified')}</strong><br>
+        ${escapeHtml(site.nearestHospital_services || '')}<br>
+        ${escapeHtml(site.nearestHospital_address || '')}<br>
+        📞 ${escapeHtml(site.nearestHospital_phone || '')}</p>
+        
+        <h3>👨‍⚕️ GP / Out of Hours</h3>
+        <p><strong>${escapeHtml(site.gp_name || 'SouthDoc')}</strong><br>
+        📞 ${escapeHtml(site.gp_phone1 || '1850 335 999')} ${site.gp_phone2 ? '/ ' + escapeHtml(site.gp_phone2) : ''}<br>
+        ${escapeHtml(site.gp_address || 'Kinsale')}</p>
+        
+        <h3>👮 Garda</h3>
+        <p><strong>${escapeHtml(site.garda_station || 'Kinsale')}</strong><br>
+        ${escapeHtml(site.garda_address || 'Church Square')}<br>
+        📞 ${escapeHtml(site.garda_localPhone || '(021) 477 9250')}</p>
+        
+        <h3>🫧 Recompression Chamber</h3>
+        <p>⚠️ Activated via Coast Guard. ${escapeHtml(site.recompression_info || 'Galway / Craigavon')}</p>
+        <hr>
+        <p><em>Brief all divers on O2, first aid, and vehicle location.</em></p>`;
+        
+        const out = document.getElementById('planOutput');
+        out.innerHTML = html;
+        out.style.display = 'block';
         if (!document.getElementById('printPlanBtn')) {
-            const printBtn = document.createElement('button');
-            printBtn.id = 'printPlanBtn';
-            printBtn.innerText = '🖨️ Print / PDF';
-            printBtn.className = 'print-btn';
-            printBtn.onclick = () => window.print();
-            outputDiv.appendChild(printBtn);
+            const btn = document.createElement('button');
+            btn.id = 'printPlanBtn';
+            btn.innerText = '🖨️ Print / PDF';
+            btn.className = 'print-btn';
+            btn.onclick = () => window.print();
+            out.appendChild(btn);
         }
-        outputDiv.scrollIntoView({ behavior: 'smooth' });
+        out.scrollIntoView({ behavior: 'smooth' });
     }
     
     document.getElementById('generateBtn').addEventListener('click', generatePlan);
