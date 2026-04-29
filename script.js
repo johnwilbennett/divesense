@@ -741,6 +741,13 @@ async function getFormattedExportText() {
   return text;
 }
 
+const emergencyBtn = document.getElementById('emergencyBtn');
+if (emergencyBtn) {
+  emergencyBtn.addEventListener('click', function() {
+    window.open('https://sultansofsurf.com/dive-emergency', '_blank');
+  });
+}
+
 // ======================== SAVED PLANS ========================
 let savedPlans = [];
 function loadSavedPlans() { const s = localStorage.getItem('divesense_plans'); if (s) savedPlans = JSON.parse(s); renderSavedPlans(); }

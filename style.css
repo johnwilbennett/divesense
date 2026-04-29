@@ -607,6 +607,26 @@ input[type="checkbox"] {
   width: 100%;
 }
 
+/* Emergency button */
+.btn-emergency {
+  background: linear-gradient(135deg, #ff4d4d, #b30000);
+  color: white;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+}
+.btn-emergency:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+}
+
+.emergency-card {
+  border-left: 3px solid #ff4444;
+}
+.emergency-description {
+  font-size: 13px;
+  margin-bottom: 15px;
+  color: #ffaaaa;
+}
 .btn {
   flex: 1;
   padding: 13px;
