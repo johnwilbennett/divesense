@@ -83,26 +83,69 @@
             border-radius: 20px;
             text-align: center;
         }
-        .radio-group {
-            display: inline-flex;
-            gap: 20px;
-            align-items: center;
-            background: #f0f4f9;
-            padding: 6px 16px;
-            border-radius: 40px;
+        /* ===== IMPROVED SHORE MARSHALL SECTION ===== */
+        .sm-card {
+            background: #f9fbfd;
+            border-radius: 20px;
+            padding: 18px 22px;
+            margin: 16px 0 20px 0;
+            border: 1px solid #e2edf7;
         }
-        .radio-group label {
+        .sm-radio-group {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2edf7;
+        }
+        .sm-radio-group label {
             width: auto;
             margin: 0;
-            font-weight: normal;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            background: #ffffff;
+            padding: 8px 18px;
+            border-radius: 40px;
+            border: 1px solid #cbd6e4;
+            transition: all 0.2s;
+        }
+        .sm-radio-group label:has(input:checked) {
+            background: #0b5e7c;
+            color: white;
+            border-color: #0b5e7c;
+        }
+        .sm-radio-group input {
+            width: 18px;
+            height: 18px;
+            margin: 0;
         }
         .sm-fields {
-            margin-left: 280px;
-            margin-bottom: 16px;
+            margin-top: 16px;
         }
+        .sm-fields select, .sm-fields input {
+            width: 100%;
+            max-width: 450px;
+            padding: 10px 16px;
+            font-size: 1rem;
+        }
+        .sm-fields label {
+            display: block;
+            width: auto;
+            margin: 0 0 6px 0;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        /* ===== END SHORE MARSHALL ===== */
         @media (max-width: 760px) {
-            label, input, select, .sm-fields { width: 100%; margin-left: 0; }
-            .radio-group { flex-wrap: wrap; }
+            label { width: 100%; display: block; }
+            input, select, textarea { width: 100%; }
+            .sm-radio-group { gap: 16px; }
+            .sm-radio-group label { padding: 6px 12px; font-size: 0.85rem; }
         }
         @media print {
             .form-container, .print-btn, #generateBtn { display: none; }
@@ -147,20 +190,33 @@
         <label>⚓ Dive Officer of the Day (DOD):</label> 
         <input type="text" id="dod" placeholder="Name and phone"><br>
         
-        <label>🛟 Shore Marshall:</label>
-        <div class="radio-group">
-            <label><input type="radio" name="smType" value="internal" checked> Listed Club Member</label>
-            <label><input type="radio" name="smType" value="external"> Non-Listed Club Member or External Contact</label>
+        <!-- ===== IMPROVED SHORE MARSHALL SECTION ===== -->
+        <div class="sm-card">
+            <div style="font-weight: 700; margin-bottom: 12px; font-size: 1.1rem;">🛟 Shore Marshall</div>
+            <div class="sm-radio-group">
+                <label>
+                    <input type="radio" name="smType" value="internal" checked> 
+                    <span>✅ Listed Club Member</span>
+                </label>
+                <label>
+                    <input type="radio" name="smType" value="external"> 
+                    <span>📞 External Contact / Non‑listed Member</span>
+                </label>
+            </div>
+            <div id="smInternalDiv" class="sm-fields">
+                <label>Choose a club member:</label>
+                <select id="smInternalSelect">
+                    <option value="">-- Select a listed club member --</option>
+                </select>
+            </div>
+            <div id="smExternalDiv" class="sm-fields" style="display:none;">
+                <label>Full name:</label>
+                <input type="text" id="smExternalName" placeholder="e.g. Mary O'Sullivan">
+                <label style="margin-top: 12px;">Phone number:</label>
+                <input type="tel" id="smExternalPhone" placeholder="e.g. 087 123 4567">
+            </div>
         </div>
-        <div id="smInternalDiv" class="sm-fields">
-            <select id="smInternalSelect" style="width: 380px;"><option value="">-- Select listed club member --</option></select>
-        </div>
-        <div id="smExternalDiv" class="sm-fields" style="display:none;">
-            <input type="text" id="smExternalName" placeholder="Full name" style="width: 380px;"><br>
-            <input type="tel" id="smExternalPhone" placeholder="Phone number" style="width: 380px; margin-top: 8px;">
-        </div>
-        
-        <!-- Club Contact section removed -->
+        <!-- ===== END SHORE MARSHALL ===== -->
         
         <div id="dynamicO2FirstAid"></div>
         
@@ -188,12 +244,10 @@
             const [sitesData, contactsData] = await Promise.all([fetchCSV(CSV_URLS.diveSites), fetchCSV(CSV_URLS.clubContacts)]);
             if (!sitesData.length) throw new Error('No dive sites found');
             
-            // Direct mapping using exact column names (with VHF swap)
             diveSites = sitesData.map(row => ({
                 id: row.id,
                 name: row.name,
                 gridRef: row.gridRef,
-                // SWAPPED: localVHF_name = station name, localVHF_channel = channel number
                 localVHF_name: row.localVHF_channel,
                 localVHF_channel: row.localVHF_name,
                 mobileCoverage: row.mobileCoverage,
@@ -235,7 +289,7 @@
         const smInternalSelect = document.getElementById('smInternalSelect');
         
         siteSelect.innerHTML = '';
-        smInternalSelect.innerHTML = '<option value="">-- Select listed club member --</option>';
+        smInternalSelect.innerHTML = '<option value="">-- Select a listed club member --</option>';
         
         diveSites.forEach(site => {
             siteSelect.appendChild(new Option(site.name, site.id));
@@ -247,7 +301,6 @@
             smInternalSelect.appendChild(new Option(display, JSON.stringify(contact)));
         });
         
-        // Update VHF display when dive site changes
         const siteSelectElem = document.getElementById('diveSiteSelect');
         const vhfDisplayElem = document.getElementById('vhfDisplay');
         function updateVhfDisplay() {
@@ -260,7 +313,7 @@
             }
         }
         siteSelectElem.addEventListener('change', updateVhfDisplay);
-        updateVhfDisplay(); // initial load
+        updateVhfDisplay();
         
         const radios = document.querySelectorAll('input[name="smType"]');
         radios.forEach(radio => radio.addEventListener('change', toggleShoreMarshallFields));
@@ -296,7 +349,6 @@
                 <label>O2 Onshore:</label><input type="text" id="o2Shore" value="${escapeHtml(site.defaultO2Shore || '')}"><br>
                 <label>First Aid Onshore:</label><input type="text" id="firstAidShore" value="${escapeHtml(site.defaultFirstAidShore || '')}"><br>`;
         }
-        // Add Notes field
         equipDiv.innerHTML += `<label>📝 Notes:</label><textarea id="notes" rows="3" style="width:380px; vertical-align:top;" placeholder="Any additional safety notes, special instructions, or equipment details..."></textarea><br>`;
         container.appendChild(equipDiv);
         
@@ -357,7 +409,6 @@
         
         const transitNote = (diveType === 'boat') ? '<p><strong>📡 Transit Report (TR):</strong> All boat dives must log a Transit Report to the local Coast Guard Station and close out the TR on returning safely.</p>' : '';
         
-        // Format recompression info
         let recompText = site.recompression_info;
         let lines = recompText.split(/<br>|\n/).filter(l => l.trim());
         let recompFormatted = '⚠️ Activated via Coast Guard';
