@@ -668,7 +668,8 @@ async function getFormattedExportText() {
     let daySuffix = '';
     if (tide.dayOffset === -1) daySuffix = ' (previous day)';
     else if (tide.dayOffset === 1) daySuffix = ' (next day)';
-    return `${tide.time} (${tide.height.toFixed(2)}m)${daySuffix}`;
+    const typeLabel = tide.type === 'High' ? 'High Tide' : 'Low Tide';
+    return `${typeLabel}: ${tide.time} (${tide.height.toFixed(2)}m)${daySuffix}`;
   }
 
   function formatDiff(tide, isPrev) {
@@ -706,8 +707,8 @@ async function getFormattedExportText() {
   text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
   text += "Dive Type: " + diveType + "\n\n";
   text += "🌊 TIDES\n─────────────────────────────────\n";
-  text += "Previous extreme: " + formatTide(prev) + (prev ? ` - ${formatDiff(prev, true)} before` : '') + "\n";
-  text += "Next extreme:     " + formatTide(next) + (next ? ` - ${formatDiff(next, false)} after` : '') + "\n\n";
+  text += "Previous " + formatTide(prev) + (prev ? ` - ${formatDiff(prev, true)} before` : '') + "\n";
+  text += "Next " + formatTide(next) + (next ? ` - ${formatDiff(next, false)} after` : '') + "\n\n";
   text += "🌡️ CONDITIONS AT DIVE TIME\n─────────────────────────────────\n";
   text += weatherText + "\n";
   if (weatherData.sunrise && weatherData.sunset) text += "\nSunrise: " + weatherData.sunrise + "\nSunset: " + weatherData.sunset + "\n";
