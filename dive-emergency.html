@@ -6,50 +6,164 @@
     <title>Dive Emergency Plan | Sultans of Surf</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
+        /* Theme to match www.sultansofsurf.com (approximate) */
         * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1280px; margin: 0 auto; padding: 20px; background: #eef5fc; }
-        .form-container, .plan-output { background: white; border-radius: 20px; padding: 28px 32px; margin-bottom: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-        h1 { color: #0b4f6c; }
-        label { font-weight: 600; display: inline-block; width: 230px; margin-top: 12px; }
-        input, select, textarea { padding: 8px 12px; margin: 6px 0 12px; width: 340px; border-radius: 12px; border: 1px solid #cbd5e1; }
-        .section { background: #f8fafc; border-left: 5px solid #0f7b9e; padding: 18px 22px; margin: 28px 0; border-radius: 16px; }
-        button { background: #0f7b9e; color: white; padding: 12px 28px; border: none; border-radius: 40px; cursor: pointer; }
-        .print-btn { background: #2b7e3a; margin-left: 12px; }
-        .loading { background: #eef2f5; padding: 20px; text-align: center; }
-        .radio-group { display: inline-block; margin: 6px 0 12px; }
-        .radio-group label { width: auto; margin-right: 20px; font-weight: normal; }
-        @media (max-width: 760px) { label, input, select, .radio-group { width: 100%; } }
-        @media print { .form-container, .print-btn, #generateBtn { display: none; } }
-        .error-msg { background: #ffe6e6; border-left: 5px solid #cc0000; padding: 15px; margin-bottom: 20px; border-radius: 12px; }
+        body {
+            font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f4f9ff;
+            color: #1e2a3a;
+        }
+        .form-container, .plan-output {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+        }
+        h1 {
+            font-size: 2rem;
+            color: #0b5e7c;
+            margin-top: 0;
+            border-left: 5px solid #0b5e7c;
+            padding-left: 20px;
+        }
+        label {
+            font-weight: 600;
+            display: inline-block;
+            width: 240px;
+            margin-top: 12px;
+            color: #1e4663;
+        }
+        input, select, textarea {
+            padding: 8px 14px;
+            margin: 6px 0 12px;
+            width: 360px;
+            border-radius: 12px;
+            border: 1px solid #cbd6e4;
+            font-size: 0.95rem;
+            transition: 0.2s;
+        }
+        input:focus, select:focus {
+            border-color: #0b5e7c;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(11,94,124,0.1);
+        }
+        .section {
+            background: #f8fafd;
+            border-left: 5px solid #0b5e7c;
+            padding: 18px 22px;
+            margin: 28px 0;
+            border-radius: 16px;
+        }
+        button {
+            background: #0b5e7c;
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #094a62;
+        }
+        .print-btn {
+            background: #2b7e3a;
+            margin-left: 12px;
+        }
+        .print-btn:hover {
+            background: #1f5e2b;
+        }
+        .loading {
+            background: #eef2f7;
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            color: #0b5e7c;
+        }
+        .radio-group {
+            display: inline-flex;
+            gap: 20px;
+            align-items: center;
+            margin: 6px 0 12px;
+            background: #f0f4f9;
+            padding: 6px 16px;
+            border-radius: 40px;
+        }
+        .radio-group label {
+            width: auto;
+            margin: 0;
+            font-weight: normal;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .radio-group input {
+            width: auto;
+            margin: 0;
+        }
+        .sm-fields {
+            margin-left: 260px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 760px) {
+            label, input, select, .sm-fields { width: 100%; margin-left: 0; }
+            .radio-group { display: flex; flex-wrap: wrap; }
+        }
+        @media print {
+            .form-container, .print-btn, #generateBtn { display: none; }
+            .plan-output { margin: 0; padding: 0; box-shadow: none; }
+            body { background: white; }
+        }
+        .error-msg {
+            background: #ffe6e6;
+            border-left: 5px solid #cc0000;
+            padding: 15px;
+            border-radius: 12px;
+            color: #990000;
+        }
+        .debug-info {
+            background: #f0f0f0;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 8px;
+            display: none;
+        }
     </style>
 </head>
 <body>
 <div class="form-container">
-    <h1>🧜‍♂️ Dive Emergency Plan <small>Sultans of Surf</small></h1>
-    <div id="loadingMsg" class="loading">🌊 Loading dive site database ...</div>
+    <h1>🌊 Dive Emergency Plan</h1>
+    <div id="loadingMsg" class="loading">🌊 Loading dive site database from Google Sheets ...</div>
     <form id="emergencyForm" style="display:none;">
         <label>📍 Dive Site:</label> <select id="diveSiteSelect" required></select><br>
         <label>🔄 Alternative Site (free text):</label> <input type="text" id="altSiteText" placeholder="e.g. Bull Rock, Shelly Cove"><br>
         <label>📡 Local VHF Station:</label> <select id="vhfSelect" required></select><br>
         <label>🚤/🏖️ Dive type:</label> <select id="diveType" required><option value="boat">Boat dive</option><option value="shore">Shore dive</option></select><br>
         
-        <!-- New fields: ETR, Total Crew, DOD -->
         <label>⏱️ Estimated Time of Return (ETR):</label> <input type="text" id="etr" placeholder="e.g. 16:30"><br>
         <label>👥 Total Crew:</label> <input type="number" id="totalCrew" placeholder="Number of people"><br>
         <label>⚓ Dive Officer of the Day (DOD):</label> <input type="text" id="dod" placeholder="Name and phone"><br>
         
-        <!-- Shore Marshall: Internal/External toggle -->
+        <!-- Shore Marshall with radio buttons side by side -->
         <label>🛟 Shore Marshall:</label>
         <div class="radio-group">
-            <label><input type="radio" name="smType" value="internal" checked> Internal (club member)</label>
-            <label><input type="radio" name="smType" value="external"> External (non-club)</label>
-        </div><br>
-        <div id="smInternalDiv" style="margin-left: 230px;">
-            <select id="smInternalSelect"><option value="">-- Select internal shore marshall --</option></select>
+            <label><input type="radio" name="smType" value="internal" checked> Internal (Club Member)</label>
+            <label><input type="radio" name="smType" value="external"> External (non-Club)</label>
         </div>
-        <div id="smExternalDiv" style="display:none; margin-left: 230px;">
-            <input type="text" id="smExternalName" placeholder="Full name"><br>
-            <input type="tel" id="smExternalPhone" placeholder="Phone number">
+        <div id="smInternalDiv" class="sm-fields">
+            <select id="smInternalSelect" style="width: 360px;"><option value="">-- Select internal shore marshall --</option></select>
+        </div>
+        <div id="smExternalDiv" class="sm-fields" style="display:none;">
+            <input type="text" id="smExternalName" placeholder="Full name" style="width: 360px;"><br>
+            <input type="tel" id="smExternalPhone" placeholder="Phone number" style="width: 360px; margin-top: 8px;">
         </div>
         
         <label>⚓ Club Contact:</label>
@@ -76,12 +190,15 @@
         });
     }
 
+    // Flexible column finder: case-insensitive, trims, matches any of the given aliases
     function getColumnValue(row, possibleNames) {
-        for (let name of possibleNames) {
-            if (row[name] !== undefined) return row[name];
-            const lowerName = name.toLowerCase();
+        for (let alias of possibleNames) {
+            // Try exact match first
+            if (row.hasOwnProperty(alias) && row[alias] !== undefined && row[alias] !== '') return row[alias];
+            // Try case-insensitive
+            const lowerAlias = alias.toLowerCase();
             for (let key in row) {
-                if (key.toLowerCase() === lowerName) return row[key];
+                if (key.toLowerCase() === lowerAlias && row[key] !== '') return row[key];
             }
         }
         return '';
@@ -92,12 +209,25 @@
             const [sitesData, contactsData] = await Promise.all([fetchCSV(CSV_URLS.diveSites), fetchCSV(CSV_URLS.clubContacts)]);
             if (!sitesData.length) throw new Error('No dive sites found');
             
+            // ----- DEBUG: Log actual column names from the CSV -----
+            const sampleRow = sitesData[0];
+            const actualColumns = Object.keys(sampleRow);
+            console.log('🔍 DIVE SITES COLUMN NAMES:', actualColumns);
+            console.log('📋 First row sample:', sampleRow);
+            // Display a hidden debug panel for easy copy/paste (optional)
+            const debugDiv = document.createElement('div');
+            debugDiv.className = 'debug-info';
+            debugDiv.innerHTML = `<strong>Debug Info:</strong> Columns found: ${actualColumns.join(', ')}<br>First row: ${JSON.stringify(sampleRow)}`;
+            document.querySelector('.form-container').appendChild(debugDiv);
+            debugDiv.style.display = 'block';
+            
+            // Map using flexible getter with multiple common aliases
             diveSites = sitesData.map(row => ({
-                id: getColumnValue(row, ['id', 'ID']),
-                name: getColumnValue(row, ['name', 'Name', 'site_name']),
-                gridRef: getColumnValue(row, ['gridRef', 'grid_ref', 'Grid Reference', 'Location']),
-                localVHF_name: getColumnValue(row, ['localVHF_name', 'local_vhf_name', 'VHF Name', 'Local VHF Station', 'VHF Station']),
-                localVHF_channel: getColumnValue(row, ['localVHF_channel', 'local_vhf_channel', 'VHF Channel', 'Channel', 'CH']),
+                id: getColumnValue(row, ['id', 'ID', 'Id']),
+                name: getColumnValue(row, ['name', 'Name', 'site_name', 'Site Name']),
+                gridRef: getColumnValue(row, ['gridRef', 'grid_ref', 'Grid Reference', 'Location', 'gridref', 'GPS']),
+                localVHF_name: getColumnValue(row, ['localVHF_name', 'local_vhf_name', 'VHF Name', 'Local VHF Station', 'VHF Station', 'vhf_name']),
+                localVHF_channel: getColumnValue(row, ['localVHF_channel', 'local_vhf_channel', 'VHF Channel', 'Channel', 'CH', 'vhf_channel']),
                 mobileCoverage: getColumnValue(row, ['mobileCoverage', 'mobile_coverage', 'Mobile Coverage', 'Coverage']),
                 defaultO2Boat: getColumnValue(row, ['defaultO2Boat', 'o2_boat', 'O2 Boat']),
                 defaultFirstAidBoat: getColumnValue(row, ['defaultFirstAidBoat', 'first_aid_boat', 'First Aid Boat']),
@@ -107,22 +237,23 @@
                 evLocation: getColumnValue(row, ['evLocation', 'ev_location', 'Vehicle Location']),
                 evColour: getColumnValue(row, ['evColour', 'ev_colour', 'Vehicle Colour']),
                 evReg: getColumnValue(row, ['evReg', 'ev_reg', 'Registration']),
-                nearestHospital_name: getColumnValue(row, ['nearestHospital_name', 'hospital_name']),
-                nearestHospital_services: getColumnValue(row, ['nearestHospital_services', 'hospital_services']),
-                nearestHospital_address: getColumnValue(row, ['nearestHospital_address', 'hospital_address']),
-                nearestHospital_phone: getColumnValue(row, ['nearestHospital_phone', 'hospital_phone']),
-                gp_name: getColumnValue(row, ['gp_name', 'gp Name']),
+                nearestHospital_name: getColumnValue(row, ['nearestHospital_name', 'hospital_name', 'Hospital Name', 'Nearest Hospital']),
+                nearestHospital_services: getColumnValue(row, ['nearestHospital_services', 'hospital_services', 'Services']),
+                nearestHospital_address: getColumnValue(row, ['nearestHospital_address', 'hospital_address', 'Address']),
+                nearestHospital_phone: getColumnValue(row, ['nearestHospital_phone', 'hospital_phone', 'Phone']),
+                gp_name: getColumnValue(row, ['gp_name', 'gp Name', 'GP Name']),
                 gp_phone1: getColumnValue(row, ['gp_phone1', 'gp_phone', 'GP Phone']),
                 gp_phone2: getColumnValue(row, ['gp_phone2', 'gp_phone_alt']),
-                gp_address: getColumnValue(row, ['gp_address', 'gp Address']),
-                garda_station: getColumnValue(row, ['garda_station', 'garda Station']),
-                garda_address: getColumnValue(row, ['garda_address', 'garda Address']),
+                gp_address: getColumnValue(row, ['gp_address', 'gp Address', 'GP Address']),
+                garda_station: getColumnValue(row, ['garda_station', 'garda Station', 'Garda Station']),
+                garda_address: getColumnValue(row, ['garda_address', 'garda Address', 'Garda Address']),
                 garda_localPhone: getColumnValue(row, ['garda_localPhone', 'garda_phone', 'Garda Phone']),
-                recompression_info: getColumnValue(row, ['recompression_info', 'recompression', 'Chamber Info'])
+                recompression_info: getColumnValue(row, ['recompression_info', 'recompression', 'Chamber Info', 'Recompression'])
             }));
             
             clubContacts = contactsData;
             
+            // Build VHF list from diveSites
             const vhfMap = new Map();
             diveSites.forEach(site => {
                 if (site.localVHF_name && site.localVHF_channel) {
@@ -136,7 +267,7 @@
             document.getElementById('emergencyForm').style.display = 'block';
         } catch (err) {
             console.error(err);
-            document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">❌ Load error: ${err.message}. Check console.</div>`;
+            document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">❌ Load error: ${err.message}. Check console and Google Sheet publishing.</div>`;
         }
     }
 
@@ -157,7 +288,6 @@
             vhfSelect.appendChild(new Option(`${vhf.name} (${vhf.channel})`, vhf.channel));
         });
         
-        // Populate both club dropdowns (Club Contact and Internal Shore Marshall)
         clubContacts.forEach(contact => {
             let display = `${contact.name} - ${contact.phone}`;
             if (contact.role) display += ` (${contact.role})`;
@@ -167,9 +297,7 @@
         
         // Toggle internal/external shore marshall fields
         const radios = document.querySelectorAll('input[name="smType"]');
-        radios.forEach(radio => {
-            radio.addEventListener('change', toggleShoreMarshallFields);
-        });
+        radios.forEach(radio => radio.addEventListener('change', toggleShoreMarshallFields));
         toggleShoreMarshallFields();
         
         document.getElementById('diveType').addEventListener('change', () => updateConditionalFields());
@@ -208,31 +336,16 @@
     
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
     
+    // Format recompression info: split lines, remove any "Kerry" addition (just use sheet data)
     function formatRecompressionInfo(raw) {
-        // Add University Hospital Kerry if not already in raw, or override
-        let chambers = [];
-        if (raw && raw.trim()) {
-            // Split by <br> or newline
-            let parts = raw.split(/<br>|\n/);
-            for (let p of parts) {
-                if (p.trim()) chambers.push(p.trim());
-            }
-        }
-        // Ensure Galway and Craigavon are present (they usually are)
-        if (!chambers.some(c => c.includes('Galway'))) {
-            chambers.push('Galway University Hospital 📞 (091) 524222');
-        }
-        if (!chambers.some(c => c.includes('Craigavon'))) {
-            chambers.push('Craigavon General Hospital 📞 +44 8017 6233 0711 (Day +44 1762 33 4444, Emergency +44 1762 33 6711)');
-        }
-        // Add University Hospital Kerry in Tralee
-        if (!chambers.some(c => c.includes('Kerry') || c.includes('Tralee'))) {
-            chambers.push('University Hospital Kerry, Tralee - Full emergency services and A&E department, Rathass, Tralee, Co. Kerry, V92 NX94 📞 (066) 718 4000');
-        }
-        // Format as separate lines with "⚠️ Activated via Coast Guard" on its own line
+        if (!raw) return '⚠️ Activated via Coast Guard<br>Galway University Hospital 📞 (091) 524222<br>Craigavon General Hospital 📞 +44 8017 6233 0711 (Day +44 1762 33 4444, Emergency +44 1762 33 6711)';
+        // Replace raw presentation: if it contains the old inline warning, clean it up
+        let cleaned = raw.replace(/⚠️ Activated via Coast Guard\.?\s*/i, '');
+        // Split by <br> or newline
+        let lines = cleaned.split(/<br>|\n/).filter(l => l.trim());
         let result = '⚠️ Activated via Coast Guard';
-        for (let c of chambers) {
-            result += '<br>' + c;
+        for (let line of lines) {
+            result += '<br>' + line.trim();
         }
         return result;
     }
@@ -244,13 +357,11 @@
         
         const altSiteText = document.getElementById('altSiteText').value.trim() || 'None';
         const diveType = document.getElementById('diveType').value;
-        
-        // New fields
         const etr = document.getElementById('etr').value.trim() || 'Not specified';
         const totalCrew = document.getElementById('totalCrew').value.trim() || 'Not specified';
         const dod = document.getElementById('dod').value.trim() || 'Not specified';
         
-        // Shore Marshall from internal/external
+        // Shore Marshall
         let shoreMarshall = '', shorePhone = '';
         const isInternal = document.querySelector('input[name="smType"]:checked').value === 'internal';
         if (isInternal) {
@@ -263,13 +374,12 @@
                 } catch(e) {}
             }
             if (!shoreMarshall) shoreMarshall = 'Not selected';
-            if (!shorePhone) shorePhone = '';
         } else {
             shoreMarshall = document.getElementById('smExternalName').value.trim() || 'Not provided';
             shorePhone = document.getElementById('smExternalPhone').value.trim() || '';
         }
         
-        // Club Contact (formerly DO)
+        // Club Contact
         let clubContact = document.getElementById('clubDOSelect').value;
         if (clubContact) { try { clubContact = `${JSON.parse(clubContact).name} - ${JSON.parse(clubContact).phone}`; } catch(e) {} }
         else clubContact = document.getElementById('clubDOFree').value.trim() || 'Not provided';
@@ -291,10 +401,8 @@
         const vhfName = vhfEntry ? vhfEntry.name : (site.localVHF_name || 'Local CG');
         const vhfDisplay = `${vhfName} (${vhfChannel})`;
         
-        // Boat dive transit report note
         const transitNote = (diveType === 'boat') ? '<p><strong>📡 Transit Report (TR):</strong> All boat dives must log a Transit Report to the local Coast Guard Station and close out the TR on returning safely.</p>' : '';
         
-        // Recompression chambers formatted
         const recompFormatted = formatRecompressionInfo(site.recompression_info);
         
         let html = `<h2>🌊 DIVE EMERGENCY PLAN</h2>
