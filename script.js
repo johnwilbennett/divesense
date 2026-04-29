@@ -185,28 +185,22 @@ async function fetchRealTideData(station, date) {
     if (data.spring !== undefined) tideType = data.spring === 1 ? "Springs" : "Neaps";
     else tideType = getTideTypeFromMoonPhase(date);
 
-    const selectedYear = date.getFullYear();
-    const selectedMonth = date.getMonth();
-    const selectedDay = date.getDate();
-    const selectedDateStr = `${selectedDay.toString().padStart(2,'0')}/${(selectedMonth+1).toString().padStart(2,'0')}/${selectedYear}`;
-
+    const selectedDateStr = date.toLocaleDateString('en-GB', { timeZone: 'Europe/Dublin' });
     let tideEvents = [];
+
     for (let extreme of data.extremes) {
       const tideUTC = new Date(extreme.dt * 1000);
+      // Get the local (Irish) date of this tide
+      const localDateStr = tideUTC.toLocaleDateString('en-GB', { timeZone: 'Europe/Dublin' });
+      if (localDateStr !== selectedDateStr) continue; // only keep tides that fall on the selected date in Irish time
+
       const local = convertUTCToIrishTime(tideUTC.getUTCHours(), tideUTC.getUTCMinutes(), tideUTC);
-      const localDateObj = new Date(Date.UTC(
-        tideUTC.getUTCFullYear(), tideUTC.getUTCMonth(), tideUTC.getUTCDate(),
-        local.hour, local.minute, 0
-      ));
-      const localDateStr = localDateObj.toLocaleDateString('en-GB', { timeZone: 'Europe/Dublin' });
-      if (localDateStr === selectedDateStr) {
-        tideEvents.push({
-          type: extreme.type === "High" ? "High" : "Low",
-          time: local.timeStr,
-          height: extreme.height,
-          timestamp: extreme.dt * 1000
-        });
-      }
+      tideEvents.push({
+        type: extreme.type === "High" ? "High" : "Low",
+        time: local.timeStr,
+        height: extreme.height,
+        timestamp: extreme.dt * 1000
+      });
     }
     tideEvents.sort((a,b) => a.timestamp - b.timestamp);
     const tideData = {
@@ -288,61 +282,82 @@ async function fetchSwellWithCache(station, date) {
   return data;
 }
 
-// ======================== ROBUST CLOSEST EXTREMES USING ABSOLUTE MINUTES ========================
+// ======================== ROBUST CLOSEST EXTREMES (prev & next, any type) ========================
 async function getClosestExtremes(station, diveDate, diveHour, diveMinute) {
-  // Get tides for day before, day of, day after
-  const dates = [-1, 0, 1].map(delta => {
-    const d = new Date(diveDate);
-    d.setDate(diveDate.getDate() + delta);
-    return d;
-  });
-  const allTides = [];
-  for (const d of dates) {
-    const tideData = await fetchRealTideData(station, d);
-    for (const e of tideData.events) {
-      const [h, m] = e.time.split(':').map(Number);
-      const minutesInDay = h * 60 + m;
-      // dayOffset: -1, 0, 1 relative to diveDate
-      let dayOffset = 0;
-      if (d.toDateString() === diveDate.toDateString()) dayOffset = 0;
-      else if (d < diveDate) dayOffset = -1;
-      else dayOffset = 1;
-      // absolute minutes from start of diveDate
-      const absoluteMinutes = dayOffset * 1440 + minutesInDay;
-      allTides.push({
-        ...e,
-        dayOffset: dayOffset,
-        minutesInDay: minutesInDay,
-        absoluteMinutes: absoluteMinutes,
-        date: d
-      });
+  // Helper to fetch tides for a date range and convert to absolute minutes
+  async function fetchTidesForRange(startDelta, endDelta) {
+    const all = [];
+    for (let delta = startDelta; delta <= endDelta; delta++) {
+      const d = new Date(diveDate);
+      d.setDate(diveDate.getDate() + delta);
+      const tideData = await fetchRealTideData(station, d);
+      for (const e of tideData.events) {
+        const [h, m] = e.time.split(':').map(Number);
+        const minutesInDay = h * 60 + m;
+        const absoluteMinutes = delta * 1440 + minutesInDay;
+        all.push({
+          ...e,
+          dayOffset: delta,
+          minutesInDay: minutesInDay,
+          absoluteMinutes: absoluteMinutes,
+          date: d
+        });
+      }
     }
+    return all;
   }
+
+  // First try -1, 0, +1 days
+  let allTides = await fetchTidesForRange(-1, 1);
   if (allTides.length === 0) return { prev: null, next: null };
   allTides.sort((a,b) => a.absoluteMinutes - b.absoluteMinutes);
-  const targetAbsolute = diveHour * 60 + diveMinute; // dayOffset 0
+  const targetAbsolute = diveHour * 60 + diveMinute;
   let prev = null, next = null;
   for (let i = 0; i < allTides.length; i++) {
     if (allTides[i].absoluteMinutes <= targetAbsolute) prev = allTides[i];
     if (allTides[i].absoluteMinutes >= targetAbsolute && next === null) next = allTides[i];
   }
-  // No extra guards needed because absoluteMinutes ordering is correct
+
+  // If both prev and next exist and have the same type, we are missing an opposite extreme.
+  // This can happen if the API did not return a tide due to date boundary issues.
+  // Fetch an extra day on the side where the missing tide should be.
+  if (prev && next && prev.type === next.type) {
+    console.warn("Both prev and next have same type, fetching additional day...");
+    let extraDelta = (prev.type === "High") ? -2 : 2; // if both High, the missing Low is after next? Actually after High comes Low, so check +2 days.
+    // Better: fetch both -2 and +2
+    const extraTides = await fetchTidesForRange(-2, 2);
+    extraTides.sort((a,b) => a.absoluteMinutes - b.absoluteMinutes);
+    // Recompute prev/next using the larger set
+    let newPrev = null, newNext = null;
+    for (let i = 0; i < extraTides.length; i++) {
+      if (extraTides[i].absoluteMinutes <= targetAbsolute) newPrev = extraTides[i];
+      if (extraTides[i].absoluteMinutes >= targetAbsolute && newNext === null) newNext = extraTides[i];
+    }
+    if (newPrev && newNext && newPrev.type !== newNext.type) {
+      prev = newPrev;
+      next = newNext;
+    } else {
+      // Fallback: keep original but log error
+      console.error("Still missing opposite extreme after expanding range");
+    }
+  }
+
   return { prev, next };
 }
 
-// Tide direction using only the closest extremes (physics-based)
+// Tide direction using the closest extremes (physics-based)
 async function getTideDirection(station, date, hour, minute) {
   const { prev, next } = await getClosestExtremes(station, date, hour, minute);
   const targetAbsolute = hour * 60 + minute;
   // Slack within 40 minutes of any extreme
   if (prev && Math.abs(targetAbsolute - prev.absoluteMinutes) <= 40) return "Slack Water ⚡";
   if (next && Math.abs(targetAbsolute - next.absoluteMinutes) <= 40) return "Slack Water ⚡";
-  // If we have both, direction is determined by the type of the previous extreme
+  // If we have a previous extreme, direction is determined by its type
   if (prev) {
     if (prev.type === "High") return "Ebbing 🌊⬇️";
     if (prev.type === "Low") return "Flooding 🌊⬆️";
   }
-  // Fallback if no previous (should not happen with 3-day window)
+  // Fallback (should not happen)
   if (next) {
     if (next.type === "High") return "Flooding 🌊⬆️";
     if (next.type === "Low") return "Ebbing 🌊⬇️";
@@ -350,8 +365,8 @@ async function getTideDirection(station, date, hour, minute) {
   return "No Data";
 }
 
-// ======================== UI BUILDING ========================
-function buildCalendar() {
+// ======================== UI BUILDING (unchanged except using new tide functions) ========================
+function buildCalendar() { /* same as before */ 
   const container = document.getElementById('calendarContainer');
   if (!container) return;
   const year = currentCalendarMonth.getFullYear();
@@ -391,7 +406,7 @@ function buildCalendar() {
   });
 }
 
-function initStations() {
+function initStations() { /* same */
   const container = document.getElementById('stationScroll');
   if (!container) return;
   let html = '';
@@ -405,7 +420,7 @@ function initStations() {
   });
 }
 
-function initTimeSpinners() {
+function initTimeSpinners() { /* same as corrected version */
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
   if (!hourWheel || !minuteWheel) return;
@@ -468,7 +483,7 @@ function initTimeSpinners() {
   setTimeout(scrollToCurrentValue, 300);
 }
 
-function initDiveType() {
+function initDiveType() { /* same */
   const radios = document.querySelectorAll('input[name="diveType"]');
   const coxField = document.getElementById('coxField');
   const boatDepartureField = document.getElementById('boatDepartureField');
@@ -486,7 +501,7 @@ function initDiveType() {
   update();
 }
 
-function initChips() {
+function initChips() { /* same */
   const categories = ["Reef","Wreck","Drift","Deep","Night","Snorkel","Kelp","Photography","Navigation","Training","Citizen Science","Fitness Test"];
   const container = document.getElementById('chipsContainer');
   if (!container) return;
@@ -587,7 +602,6 @@ async function updateDetailed() {
     }
   } else html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
 
-  // Show the two closest extremes (previous and next)
   const { prev, next } = await getClosestExtremes(currentStation, currentDate, selectedHour, selectedMinute);
   if (prev || next) {
     html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
