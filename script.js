@@ -183,7 +183,7 @@ function loadUserPreferences() {
 let savedPlans = [];
 function loadSavedPlans() { const s = localStorage.getItem('divesense_plans'); if (s) savedPlans = JSON.parse(s); renderSavedPlans(); }
 
-// REAL TIDE DATA – FILTERED BY LOCAL DATE
+// REAL TIDE DATA – FILTERED BY LOCAL DATE (unchanged)
 async function fetchRealTideData(station, date) {
   const cacheKey = station.worldtidesId + "_" + formatDateForAPI(date);
   const now = Date.now();
@@ -241,6 +241,202 @@ async function fetchRealTideData(station, date) {
     return { events: [], moonPhase: getMoonPhase(date), tideType: "Unknown", error: true };
   }
 }
+
+// Helper to fetch tides for a given date (cached)
+async function getTidesForDate(date) {
+  return await fetchRealTideData(currentStation, date);
+}
+
+// ======================== FIXED CLOSEST TIDES (with adjacent days) ========================
+async function getClosestTides(targetDate, targetHour, targetMinute) {
+  // First, get current day's tides
+  const currentTides = await fetchRealTideData(currentStation, targetDate);
+  const events = currentTides.events;
+  const targetMinutes = targetHour * 60 + targetMinute;
+
+  // Convert current day events to minutes
+  const withMinutes = events.map(t => ({
+    tide: t,
+    minutes: parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1])
+  })).sort((a,b) => a.minutes - b.minutes);
+
+  let prev = null, next = null;
+  for (let item of withMinutes) {
+    if (item.minutes <= targetMinutes) prev = item.tide;
+    if (item.minutes >= targetMinutes && next === null) next = item.tide;
+  }
+
+  // If no previous tide, fetch previous day's last tide
+  if (!prev) {
+    const prevDate = new Date(targetDate);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevTides = await fetchRealTideData(currentStation, prevDate);
+    if (prevTides.events.length > 0) {
+      const lastPrev = prevTides.events[prevTides.events.length - 1];
+      prev = { ...lastPrev, dayOffset: -1 };
+    }
+  } else if (prev.dayOffset === undefined) {
+    prev = { ...prev, dayOffset: 0 };
+  }
+
+  // If no next tide, fetch next day's first tide
+  if (!next) {
+    const nextDate = new Date(targetDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextTides = await fetchRealTideData(currentStation, nextDate);
+    if (nextTides.events.length > 0) {
+      const firstNext = nextTides.events[0];
+      next = { ...firstNext, dayOffset: 1 };
+    }
+  } else if (next.dayOffset === undefined) {
+    next = { ...next, dayOffset: 0 };
+  }
+
+  return { prev, next };
+}
+// ======================================================================================
+
+// ======================== ROBUST TIDE DIRECTION ========================
+function getTideDirection(tideEvents, hour) {
+  if (!tideEvents || tideEvents.length === 0) return "No Data";
+  const tides = tideEvents.map(t => {
+    const parts = t.time.split(':');
+    return { type: t.type, minutes: parseInt(parts[0]) * 60 + parseInt(parts[1]) };
+  }).sort((a,b) => a.minutes - b.minutes);
+  const target = hour * 60;
+  let prev = null, next = null;
+  for (let i = 0; i < tides.length; i++) {
+    if (tides[i].minutes <= target) prev = tides[i];
+    if (tides[i].minutes >= target && next === null) next = tides[i];
+  }
+  const first = tides[0], last = tides[tides.length-1];
+  const slack = (m) => Math.abs(m - target) <= 40;
+  if (target < first.minutes) {
+    if (slack(first.minutes)) return "Slack Water ⚡";
+    return first.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
+  }
+  if (target > last.minutes) {
+    if (slack(last.minutes)) return "Slack Water ⚡";
+    return last.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
+  }
+  if (prev && next) {
+    if (slack(prev.minutes) || slack(next.minutes)) return "Slack Water ⚡";
+    if (prev.type === "High" && next.type === "Low") return "Ebbing 🌊⬇️";
+    if (prev.type === "Low" && next.type === "High") return "Flooding 🌊⬆️";
+  }
+  return "No Data";
+}
+// ======================================================================
+
+// ======================== EXPORT WITH NEW CLOSEST TIDES ========================
+async function getFormattedExportText() {
+  const diveSiteElem = document.getElementById('diveSite');
+  const dodElem = document.getElementById('dod');
+  const dodAsstElem = document.getElementById('dodAsst');
+  const coxNameElem = document.getElementById('coxName');
+  const maxDepthElem = document.getElementById('maxDepth');
+  const torchesElem = document.getElementById('torches');
+  const lifeJacketsElem = document.getElementById('lifeJackets');
+
+  const diveSite = diveSiteElem ? diveSiteElem.value : '';
+  const dod = dodElem ? dodElem.value : '';
+  const dodAsst = dodAsstElem ? dodAsstElem.value : '';
+  const coxName = coxNameElem ? coxNameElem.value : '';
+  const maxDepth = maxDepthElem ? maxDepthElem.value : '';
+  const torches = torchesElem ? torchesElem.checked : false;
+  const lifeJackets = lifeJacketsElem ? lifeJacketsElem.checked : false;
+
+  const coxModeRadios = document.querySelectorAll('input[name="coxMode"]');
+  let coxMode = '';
+  for (let r of coxModeRadios) if (r.checked) coxMode = r.value;
+  const partRadios = document.querySelectorAll('input[name="participation"]');
+  let participation = "Open to All";
+  for (let r of partRadios) if (r.checked) participation = r.value;
+  const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
+  let diveType = "Boat";
+  for (let r of diveTypeRadios) if (r.checked) diveType = r.value;
+  const timePrefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
+
+  const weatherData = await fetchRealWeather(currentStation, currentDate);
+  const weather = weatherData.hourly;
+  const swell = await fetchRealSwellData(currentStation, currentDate);
+  let hourWeather = weather.find(w => parseInt(w.time) === currentHour) || weather[12];
+  let hourSwell = swell.find(s => parseInt(s.time) === currentHour) || { swellHeight:0, swellPeriod:0, swellDir:0 };
+
+  // Use improved getClosestTides that can fetch adjacent days
+  const { prev: prevTide, next: nextTide } = await getClosestTides(currentDate, currentHour, currentMinute);
+
+  // Helper to format tide with day offset
+  function formatTide(tide) {
+    if (!tide) return 'N/A';
+    let daySuffix = '';
+    if (tide.dayOffset === -1) daySuffix = ' (previous day)';
+    else if (tide.dayOffset === 1) daySuffix = ' (next day)';
+    return `${tide.time} (${tide.height.toFixed(2)}m)${daySuffix}`;
+  }
+
+  const categories = Array.from(selectedChips).join(', ');
+  const windArrow = getWindArrow(hourWeather.windDir);
+  const swellArrow = getSwellArrow(hourSwell.swellDir);
+
+  let weatherText = '';
+  if (hourWeather && !hourWeather.error) {
+    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + " (Gusts " + hourWeather.gusts + " Bft)\n";
+    weatherText += "   Swell: " + hourSwell.swellHeight.toFixed(1) + "m / " + hourSwell.swellPeriod + "s " + hourSwell.swellDir + "° " + degreesToDirection(hourSwell.swellDir) + " " + swellArrow + "\n";
+    weatherText += "   Visibility: " + hourWeather.visibility.toFixed(1) + " km\n";
+    weatherText += "   Rain: " + hourWeather.rain.toFixed(1) + " mm\n";
+    weatherText += "   Cloud Cover: " + hourWeather.cloudCover + "%\n";
+    weatherText += "   Air Temp: " + hourWeather.airTemp.toFixed(1) + "°C\n";
+    weatherText += "   UV Index: " + hourWeather.uvIndex;
+  } else weatherText = 'Weather data unavailable';
+
+  let text = "═══════════════════════════════════\n";
+  text += "        🌊 DIVESENSE DIVE PLAN 🌊\n";
+  text += "═══════════════════════════════════\n\n";
+  text += "📅 DATE & TIME\n─────────────────────────────────\n";
+  text += "Date: " + formatDateDisplay(currentDate) + "\n";
+  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n\n";
+  text += "📍 LOCATION\n─────────────────────────────────\n";
+  text += "Base Station: " + currentStation.name + "\n";
+  text += "Coordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
+  text += "Google Maps: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
+  text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
+  text += "Dive Type: " + diveType + "\n\n";
+  text += "🌊 TIDES\n─────────────────────────────────\n";
+  text += "High Water: " + formatTide( (prevTide && prevTide.type === 'High') ? prevTide : (nextTide && nextTide.type === 'High') ? nextTide : null ) + "\n";
+  text += "Low Water: " + formatTide( (prevTide && prevTide.type === 'Low') ? prevTide : (nextTide && nextTide.type === 'Low') ? nextTide : null ) + "\n\n";
+  text += "🌡️ CONDITIONS AT DIVE TIME\n─────────────────────────────────\n";
+  text += weatherText + "\n";
+  if (weatherData.sunrise && weatherData.sunset) text += "\nSunrise: " + weatherData.sunrise + "\nSunset: " + weatherData.sunset + "\n";
+  text += "\n👥 CREW\n─────────────────────────────────\n";
+  text += "DOD: " + (dod || 'Not specified') + "\n";
+  text += "Assistant DOD: " + (dodAsst || 'None') + "\n";
+  if (diveType === 'Boat') {
+    text += "Cox'n: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
+    const boatDeparture = document.getElementById('boatDeparture')?.value || '';
+    text += "Boat Departure Location: " + (boatDeparture || 'Not specified') + "\n";
+  } else {
+    const kittedBrief = document.getElementById('kittedBriefLocation')?.value || '';
+    text += "Kitted Brief Location: " + (kittedBrief || 'Not specified') + "\n";
+  }
+  let partText = participation === "Open to All" ? "Open to All (with appropriate buddy pairs)" : "Restricted to D2+ (with appropriate buddy pairs)";
+  text += "Participation: " + partText + "\n";
+  text += "Max Depth: " + (maxDepth || 'N/A') + "m\n\n";
+  text += "⚙️ EQUIPMENT & CATEGORIES\n─────────────────────────────────\n";
+  if (torches) text += "✓ Torches Required\n";
+  if (lifeJackets) text += "✓ Life Jackets Required\n";
+  text += "Dive Categories: " + (categories || 'None selected') + "\n\n";
+  text += "═══════════════════════════════════\n";
+  text += "📚 DIVE BUDDIES, GRADES & DEPTHS\n";
+  text += "═══════════════════════════════════\n";
+  text += "Please see: https://drive.google.com/drive/folders/139b1VxbTvLtw-i1fd7CBdL_MhM5mCDdW?usp=sharing\n";
+  text += "for DIVE BUDDIES, GRADES AND MAXIMUM DEPTHS\n\n";
+  text += "─────────────────────────────────\n";
+  text += "⚠️ Always verify with official sources\n";
+  text += "Created with DiveSense - Dive Planning tool available on https://www.sultansofsurf.com\n";
+  return text;
+}
+// ======================================================================
 
 // REAL WEATHER DATA (wind, temp, etc.) WITH SUNRISE/SUNSET
 async function fetchRealWeather(station, date) {
@@ -313,161 +509,6 @@ function getWindArrow(deg) {
   return "↘";
 }
 const getSwellArrow = getWindArrow;
-
-// ======================== ROBUST TIDE DIRECTION ========================
-function getTideDirection(tideEvents, hour) {
-  if (!tideEvents || tideEvents.length === 0) return "No Data";
-  const tides = tideEvents.map(t => {
-    const parts = t.time.split(':');
-    return { type: t.type, minutes: parseInt(parts[0]) * 60 + parseInt(parts[1]) };
-  }).sort((a,b) => a.minutes - b.minutes);
-  const target = hour * 60;
-  let prev = null, next = null;
-  for (let i = 0; i < tides.length; i++) {
-    if (tides[i].minutes <= target) prev = tides[i];
-    if (tides[i].minutes >= target && next === null) next = tides[i];
-  }
-  const first = tides[0], last = tides[tides.length-1];
-  const slack = (m) => Math.abs(m - target) <= 40;
-  if (target < first.minutes) {
-    if (slack(first.minutes)) return "Slack Water ⚡";
-    return first.type === "High" ? "Flooding 🌊⬆️" : "Ebbing 🌊⬇️";
-  }
-  if (target > last.minutes) {
-    if (slack(last.minutes)) return "Slack Water ⚡";
-    return last.type === "High" ? "Ebbing 🌊⬇️" : "Flooding 🌊⬆️";
-  }
-  if (prev && next) {
-    if (slack(prev.minutes) || slack(next.minutes)) return "Slack Water ⚡";
-    if (prev.type === "High" && next.type === "Low") return "Ebbing 🌊⬇️";
-    if (prev.type === "Low" && next.type === "High") return "Flooding 🌊⬆️";
-  }
-  return "No Data";
-}
-// ======================================================================
-
-// ======================== ROBUST CLOSEST TIDES for EXPORT & DETAIL ========================
-function getClosestTides(tideEvents, targetHour, targetMinute) {
-  if (!tideEvents || tideEvents.length === 0) return { prev: null, next: null };
-  const target = targetHour * 60 + targetMinute;
-  // Convert to minutes and keep original tide objects
-  const withMinutes = tideEvents.map(t => ({
-    tide: t,
-    minutes: parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1])
-  })).sort((a,b) => a.minutes - b.minutes);
-  // Find previous (largest <= target) and next (smallest >= target)
-  let prev = null, next = null;
-  for (let item of withMinutes) {
-    if (item.minutes <= target) prev = item.tide;
-    if (item.minutes >= target && next === null) next = item.tide;
-  }
-  // Fallback if one is missing
-  if (!prev && next) prev = next;
-  if (!next && prev) next = prev;
-  return { prev, next };
-}
-// ======================================================================
-
-async function getFormattedExportText() {
-  const diveSiteElem = document.getElementById('diveSite');
-  const dodElem = document.getElementById('dod');
-  const dodAsstElem = document.getElementById('dodAsst');
-  const coxNameElem = document.getElementById('coxName');
-  const maxDepthElem = document.getElementById('maxDepth');
-  const torchesElem = document.getElementById('torches');
-  const lifeJacketsElem = document.getElementById('lifeJackets');
-
-  const diveSite = diveSiteElem ? diveSiteElem.value : '';
-  const dod = dodElem ? dodElem.value : '';
-  const dodAsst = dodAsstElem ? dodAsstElem.value : '';
-  const coxName = coxNameElem ? coxNameElem.value : '';
-  const maxDepth = maxDepthElem ? maxDepthElem.value : '';
-  const torches = torchesElem ? torchesElem.checked : false;
-  const lifeJackets = lifeJacketsElem ? lifeJacketsElem.checked : false;
-
-  const coxModeRadios = document.querySelectorAll('input[name="coxMode"]');
-  let coxMode = '';
-  for (let r of coxModeRadios) if (r.checked) coxMode = r.value;
-  const partRadios = document.querySelectorAll('input[name="participation"]');
-  let participation = "Open to All";
-  for (let r of partRadios) if (r.checked) participation = r.value;
-  const diveTypeRadios = document.querySelectorAll('input[name="diveType"]');
-  let diveType = "Boat";
-  for (let r of diveTypeRadios) if (r.checked) diveType = r.value;
-  const timePrefix = diveType === 'Boat' ? 'Lines Away Time' : 'Kitted Brief Time';
-
-  const weatherData = await fetchRealWeather(currentStation, currentDate);
-  const weather = weatherData.hourly;
-  const swell = await fetchRealSwellData(currentStation, currentDate);
-  let hourWeather = weather.find(w => parseInt(w.time) === currentHour) || weather[12];
-  let hourSwell = swell.find(s => parseInt(s.time) === currentHour) || { swellHeight:0, swellPeriod:0, swellDir:0 };
-  const tides = await fetchRealTideData(currentStation, currentDate);
-  const { prev: prevTide, next: nextTide } = getClosestTides(tides.events, currentHour, currentMinute);
-
-  const highWater = (prevTide && prevTide.type === 'High') ? prevTide : (nextTide && nextTide.type === 'High') ? nextTide : null;
-  const lowWater  = (prevTide && prevTide.type === 'Low')  ? prevTide : (nextTide && nextTide.type === 'Low')  ? nextTide : null;
-
-  const categories = Array.from(selectedChips).join(', ');
-  const windArrow = getWindArrow(hourWeather.windDir);
-  const swellArrow = getSwellArrow(hourSwell.swellDir);
-
-  let weatherText = '';
-  if (hourWeather && !hourWeather.error) {
-    weatherText = getWeatherIcon(hourWeather.cloudCover, hourWeather.rain) + " Wind: " + hourWeather.windSpeed + " Bft " + hourWeather.windDir + "° " + degreesToDirection(hourWeather.windDir) + " " + windArrow + " (Gusts " + hourWeather.gusts + " Bft)\n";
-    weatherText += "   Swell: " + hourSwell.swellHeight.toFixed(1) + "m / " + hourSwell.swellPeriod + "s " + hourSwell.swellDir + "° " + degreesToDirection(hourSwell.swellDir) + " " + swellArrow + "\n";
-    weatherText += "   Visibility: " + hourWeather.visibility.toFixed(1) + " km\n";
-    weatherText += "   Rain: " + hourWeather.rain.toFixed(1) + " mm\n";
-    weatherText += "   Cloud Cover: " + hourWeather.cloudCover + "%\n";
-    weatherText += "   Air Temp: " + hourWeather.airTemp.toFixed(1) + "°C\n";
-    weatherText += "   UV Index: " + hourWeather.uvIndex;
-  } else weatherText = 'Weather data unavailable';
-
-  let text = "═══════════════════════════════════\n";
-  text += "        🌊 DIVESENSE DIVE PLAN 🌊\n";
-  text += "═══════════════════════════════════\n\n";
-  text += "📅 DATE & TIME\n─────────────────────────────────\n";
-  text += "Date: " + formatDateDisplay(currentDate) + "\n";
-  text += "Time: " + getSelectedTime() + " (" + timePrefix + ")\n\n";
-  text += "📍 LOCATION\n─────────────────────────────────\n";
-  text += "Base Station: " + currentStation.name + "\n";
-  text += "Coordinates: " + currentStation.lat + ", " + currentStation.lon + "\n";
-  text += "Google Maps: https://www.google.com/maps?q=" + currentStation.lat + "," + currentStation.lon + "\n";
-  text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
-  text += "Dive Type: " + diveType + "\n\n";
-  text += "🌊 TIDES\n─────────────────────────────────\n";
-  text += "High Water: " + (highWater ? highWater.time + " (" + highWater.height.toFixed(2) + "m)" : 'N/A') + "\n";
-  text += "Low Water: " + (lowWater ? lowWater.time + " (" + lowWater.height.toFixed(2) + "m)" : 'N/A') + "\n\n";
-  text += "🌡️ CONDITIONS AT DIVE TIME\n─────────────────────────────────\n";
-  text += weatherText + "\n";
-  if (weatherData.sunrise && weatherData.sunset) text += "\nSunrise: " + weatherData.sunrise + "\nSunset: " + weatherData.sunset + "\n";
-  text += "\n👥 CREW\n─────────────────────────────────\n";
-  text += "DOD: " + (dod || 'Not specified') + "\n";
-  text += "Assistant DOD: " + (dodAsst || 'None') + "\n";
-  if (diveType === 'Boat') {
-    text += "Cox'n: " + (coxName || 'N/A') + (coxMode ? " (" + coxMode + " Cox'n)" : "") + "\n";
-    const boatDeparture = document.getElementById('boatDeparture')?.value || '';
-    text += "Boat Departure Location: " + (boatDeparture || 'Not specified') + "\n";
-  } else {
-    const kittedBrief = document.getElementById('kittedBriefLocation')?.value || '';
-    text += "Kitted Brief Location: " + (kittedBrief || 'Not specified') + "\n";
-  }
-  let partText = participation === "Open to All" ? "Open to All (with appropriate buddy pairs)" : "Restricted to D2+ (with appropriate buddy pairs)";
-  text += "Participation: " + partText + "\n";
-  text += "Max Depth: " + (maxDepth || 'N/A') + "m\n\n";
-  text += "⚙️ EQUIPMENT & CATEGORIES\n─────────────────────────────────\n";
-  if (torches) text += "✓ Torches Required\n";
-  if (lifeJackets) text += "✓ Life Jackets Required\n";
-  text += "Dive Categories: " + (categories || 'None selected') + "\n\n";
-  text += "═══════════════════════════════════\n";
-  text += "📚 DIVE BUDDIES, GRADES & DEPTHS\n";
-  text += "═══════════════════════════════════\n";
-  text += "Please see: https://drive.google.com/drive/folders/139b1VxbTvLtw-i1fd7CBdL_MhM5mCDdW?usp=sharing\n";
-  text += "for DIVE BUDDIES, GRADES AND MAXIMUM DEPTHS\n\n";
-  text += "─────────────────────────────────\n";
-  text += "⚠️ Always verify with official sources\n";
-  text += "Created with DiveSense - Dive Planning tool available on https://www.sultansofsurf.com\n";
-  return text;
-}
 
 function buildCalendar() {
   const container = document.getElementById('calendarContainer');
@@ -697,16 +738,23 @@ async function updateDetailed() {
   } else html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
   if (isSlack && tides.events.length > 0) html += `<div class="detail-row" style="background: rgba(47, 255, 238, 0.15); border-radius: 8px; margin-top: 5px; padding: 8px;"><strong>⚡ Slack Water Alert:</strong> Current time is within 40 minutes of a tide change</div>`;
 
-  const { prev: prevTide, next: nextTide } = getClosestTides(tides.events, selectedHour, selectedMinute);
+  // Use new getClosestTides for detailed view as well (optional but consistent)
+  const { prev: prevTide, next: nextTide } = await getClosestTides(currentDate, selectedHour, selectedMinute);
   if ((prevTide || nextTide) && tides.events.length > 0) {
     html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
     if (prevTide) {
       const diff = Math.abs((selectedHour*60+selectedMinute) - (parseInt(prevTide.time.split(':')[0])*60 + parseInt(prevTide.time.split(':')[1])));
-      html += `<div class="detail-row">← Previous ${prevTide.type} at ${prevTide.time} (${prevTide.height.toFixed(2)}m) - ${Math.floor(diff/60)}h ${diff%60}m before</div>`;
+      let daySuffix = '';
+      if (prevTide.dayOffset === -1) daySuffix = ' (previous day)';
+      else if (prevTide.dayOffset === 1) daySuffix = ' (next day)';
+      html += `<div class="detail-row">← Previous ${prevTide.type} at ${prevTide.time} (${prevTide.height.toFixed(2)}m)${daySuffix} - ${Math.floor(diff/60)}h ${diff%60}m before</div>`;
     }
     if (nextTide) {
       const diff = Math.abs((parseInt(nextTide.time.split(':')[0])*60 + parseInt(nextTide.time.split(':')[1])) - (selectedHour*60+selectedMinute));
-      html += `<div class="detail-row">→ Next ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m) - ${Math.floor(diff/60)}h ${diff%60}m after</div>`;
+      let daySuffix = '';
+      if (nextTide.dayOffset === -1) daySuffix = ' (previous day)';
+      else if (nextTide.dayOffset === 1) daySuffix = ' (next day)';
+      html += `<div class="detail-row">→ Next ${nextTide.type} at ${nextTide.time} (${nextTide.height.toFixed(2)}m)${daySuffix} - ${Math.floor(diff/60)}h ${diff%60}m after</div>`;
     }
     html += `<div class="detail-row"><strong>🌊 Tide Direction:</strong> ${tideDir}</div>`;
     if (tides.tideType !== 'Unknown') html += `<div class="detail-row">${tides.tideType === 'Springs' ? '🌕 Spring tides expected (larger ranges)' : '🌙 Neap tides expected (smaller ranges)'}</div>`;
