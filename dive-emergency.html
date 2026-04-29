@@ -27,12 +27,12 @@
     <div id="loadingMsg" class="loading">🌊 Loading dive site database ...</div>
     <form id="emergencyForm" style="display:none;">
         <label>📍 Dive Site:</label> <select id="diveSiteSelect" required></select><br>
-        <label>🔄 Alternative Site:</label> <select id="altSiteSelect"><option value="">-- None --</option></select><br>
+        <label>🔄 Alternative Site (free text):</label> <input type="text" id="altSiteText" placeholder="e.g. Bull Rock, Shelly Cove" style="width: 340px;"><br>
         <label>📡 Local VHF Station:</label> <select id="vhfSelect" required></select><br>
         <label>🚤/🏖️ Dive type:</label> <select id="diveType" required><option value="boat">Boat dive</option><option value="shore">Shore dive</option></select><br>
         <label>👤 Shore Marshall Name:</label> <input type="text" id="shoreMarshall" required><br>
         <label>📞 Shore Marshall Phone:</label> <input type="tel" id="shorePhone" required><br>
-        <label>⚓ Club Diving Officer (DO):</label>
+        <label>⚓ Club Contact:</label>
         <select id="clubDOSelect"><option value="">-- Select --</option></select>
         <input type="text" id="clubDOFree" placeholder="Or enter manually"><br>
         <div id="dynamicO2FirstAid"></div>
@@ -124,20 +124,16 @@
 
     function populateDropdowns() {
         const siteSelect = document.getElementById('diveSiteSelect');
-        const altSelect = document.getElementById('altSiteSelect');
         const vhfSelect = document.getElementById('vhfSelect');
         const clubSelect = document.getElementById('clubDOSelect');
         
-        siteSelect.innerHTML = ''; altSelect.innerHTML = '<option value="">-- None --</option>'; vhfSelect.innerHTML = ''; clubSelect.innerHTML = '<option value="">-- Select --</option>';
+        siteSelect.innerHTML = ''; vhfSelect.innerHTML = ''; clubSelect.innerHTML = '<option value="">-- Select --</option>';
         
         diveSites.forEach(site => {
-            let opt = new Option(site.name, site.id);
-            siteSelect.appendChild(opt);
-            altSelect.appendChild(new Option(site.name, site.id));
+            siteSelect.appendChild(new Option(site.name, site.id));
         });
         
         localVHFs.forEach(vhf => {
-            // FIX: Remove "CH " prefix – just show the channel number
             vhfSelect.appendChild(new Option(`${vhf.name} (${vhf.channel})`, vhf.channel));
         });
         
@@ -181,14 +177,16 @@
         const siteId = document.getElementById('diveSiteSelect').value;
         const site = diveSites.find(s => s.id == siteId);
         if (!site) return alert('Select a dive site.');
-        const altSiteId = document.getElementById('altSiteSelect').value;
-        const altSite = altSiteId ? diveSites.find(s => s.id == altSiteId) : null;
+        
+        // Alternative site is now free text
+        const altSiteText = document.getElementById('altSiteText').value.trim() || 'None';
+        
         const diveType = document.getElementById('diveType').value;
         const shoreMarshall = document.getElementById('shoreMarshall').value.trim() || '—';
         const shorePhone = document.getElementById('shorePhone').value.trim() || '—';
-        let clubDO = document.getElementById('clubDOSelect').value;
-        if (clubDO) { try { clubDO = `${JSON.parse(clubDO).name} - ${JSON.parse(clubDO).phone}`; } catch(e) {} }
-        else clubDO = document.getElementById('clubDOFree').value.trim() || 'Not provided';
+        let clubContact = document.getElementById('clubDOSelect').value;
+        if (clubContact) { try { clubContact = `${JSON.parse(clubContact).name} - ${JSON.parse(clubContact).phone}`; } catch(e) {} }
+        else clubContact = document.getElementById('clubDOFree').value.trim() || 'Not provided';
         
         let o2Equipment = '', firstAidEquipment = '';
         if (diveType === 'boat') {
@@ -205,8 +203,6 @@
         const vhfChannel = document.getElementById('vhfSelect').value;
         const vhfEntry = localVHFs.find(v => v.channel == vhfChannel);
         const vhfName = vhfEntry ? vhfEntry.name : (site.localVHF_name || 'Local CG');
-        
-        // FIX: Remove "CH " prefix from display
         const vhfDisplay = `${vhfName} (${vhfChannel})`;
         
         let html = `<h2>🌊 DIVE EMERGENCY PLAN</h2>
@@ -215,22 +211,20 @@
         <h3>📍 Dive Site</h3>
         <p><strong>Primary:</strong> ${escapeHtml(site.name)}<br>
         <strong>GPS Coordinates:</strong> ${escapeHtml(site.gridRef || '—')}<br>
-        <strong>Alternative:</strong> ${altSite ? escapeHtml(altSite.name) : 'None'}<br>
+        <strong>Alternative:</strong> ${escapeHtml(altSiteText)}<br>
         <strong>Local VHF:</strong> ${escapeHtml(vhfDisplay)}<br>
         <strong>Emergency VHF:</strong> 16<br>
         <strong>Mobile Coverage:</strong> ${escapeHtml(site.mobileCoverage || 'Not Confirmed')}</p>
         
         <h3>👥 Personnel</h3>
         <p><strong>Shore Marshall:</strong> ${escapeHtml(shoreMarshall)} — ${escapeHtml(shorePhone)}<br>
-        <strong>Club DO:</strong> ${escapeHtml(clubDO)}</p>
+        <strong>Club Contact:</strong> ${escapeHtml(clubContact)}</p>
         
         <h3>🆘 On-site Equipment</h3>
         <p><strong>Oxygen (${diveType}):</strong> ${escapeHtml(o2Equipment) || 'As per SOP'}<br>
         <strong>First Aid:</strong> ${escapeHtml(firstAidEquipment) || 'As per SOP'}<br>
         <strong>Emergency Vehicle:</strong> ${escapeHtml(evMake)} / ${escapeHtml(evColour)} / ${escapeHtml(evReg)}<br>
         <strong>Location:</strong> ${escapeHtml(evLocation)}</p>
-        
-        <!-- REMOVED: Nearest Non-Diving O2 section -->
         
         <h3>🚨 Coast Guard</h3>
         <p>📞 112/999 &nbsp;|&nbsp; VHF 16</p>
