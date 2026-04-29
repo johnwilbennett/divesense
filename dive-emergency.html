@@ -11,12 +11,14 @@
         .form-container, .plan-output { background: white; border-radius: 20px; padding: 28px 32px; margin-bottom: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
         h1 { color: #0b4f6c; }
         label { font-weight: 600; display: inline-block; width: 230px; margin-top: 12px; }
-        input, select { padding: 8px 12px; margin: 6px 0 12px; width: 340px; border-radius: 12px; border: 1px solid #cbd5e1; }
+        input, select, textarea { padding: 8px 12px; margin: 6px 0 12px; width: 340px; border-radius: 12px; border: 1px solid #cbd5e1; }
         .section { background: #f8fafc; border-left: 5px solid #0f7b9e; padding: 18px 22px; margin: 28px 0; border-radius: 16px; }
         button { background: #0f7b9e; color: white; padding: 12px 28px; border: none; border-radius: 40px; cursor: pointer; }
         .print-btn { background: #2b7e3a; margin-left: 12px; }
         .loading { background: #eef2f5; padding: 20px; text-align: center; }
-        @media (max-width: 760px) { label, input, select { width: 100%; } }
+        .radio-group { display: inline-block; margin: 6px 0 12px; }
+        .radio-group label { width: auto; margin-right: 20px; font-weight: normal; }
+        @media (max-width: 760px) { label, input, select, .radio-group { width: 100%; } }
         @media print { .form-container, .print-btn, #generateBtn { display: none; } }
         .error-msg { background: #ffe6e6; border-left: 5px solid #cc0000; padding: 15px; margin-bottom: 20px; border-radius: 12px; }
     </style>
@@ -27,14 +29,33 @@
     <div id="loadingMsg" class="loading">🌊 Loading dive site database ...</div>
     <form id="emergencyForm" style="display:none;">
         <label>📍 Dive Site:</label> <select id="diveSiteSelect" required></select><br>
-        <label>🔄 Alternative Site (free text):</label> <input type="text" id="altSiteText" placeholder="e.g. Bull Rock, Shelly Cove" style="width: 340px;"><br>
+        <label>🔄 Alternative Site (free text):</label> <input type="text" id="altSiteText" placeholder="e.g. Bull Rock, Shelly Cove"><br>
         <label>📡 Local VHF Station:</label> <select id="vhfSelect" required></select><br>
         <label>🚤/🏖️ Dive type:</label> <select id="diveType" required><option value="boat">Boat dive</option><option value="shore">Shore dive</option></select><br>
-        <label>👤 Shore Marshall Name:</label> <input type="text" id="shoreMarshall" required><br>
-        <label>📞 Shore Marshall Phone:</label> <input type="tel" id="shorePhone" required><br>
+        
+        <!-- New fields: ETR, Total Crew, DOD -->
+        <label>⏱️ Estimated Time of Return (ETR):</label> <input type="text" id="etr" placeholder="e.g. 16:30"><br>
+        <label>👥 Total Crew:</label> <input type="number" id="totalCrew" placeholder="Number of people"><br>
+        <label>⚓ Dive Officer of the Day (DOD):</label> <input type="text" id="dod" placeholder="Name and phone"><br>
+        
+        <!-- Shore Marshall: Internal/External toggle -->
+        <label>🛟 Shore Marshall:</label>
+        <div class="radio-group">
+            <label><input type="radio" name="smType" value="internal" checked> Internal (club member)</label>
+            <label><input type="radio" name="smType" value="external"> External (non-club)</label>
+        </div><br>
+        <div id="smInternalDiv" style="margin-left: 230px;">
+            <select id="smInternalSelect"><option value="">-- Select internal shore marshall --</option></select>
+        </div>
+        <div id="smExternalDiv" style="display:none; margin-left: 230px;">
+            <input type="text" id="smExternalName" placeholder="Full name"><br>
+            <input type="tel" id="smExternalPhone" placeholder="Phone number">
+        </div>
+        
         <label>⚓ Club Contact:</label>
         <select id="clubDOSelect"><option value="">-- Select --</option></select>
         <input type="text" id="clubDOFree" placeholder="Or enter manually"><br>
+        
         <div id="dynamicO2FirstAid"></div>
         <button type="button" id="generateBtn">📋 Generate Emergency Plan</button>
     </form>
@@ -86,9 +107,6 @@
                 evLocation: getColumnValue(row, ['evLocation', 'ev_location', 'Vehicle Location']),
                 evColour: getColumnValue(row, ['evColour', 'ev_colour', 'Vehicle Colour']),
                 evReg: getColumnValue(row, ['evReg', 'ev_reg', 'Registration']),
-                nearestO2_name: getColumnValue(row, ['nearestO2_name', 'nearest_o2_name', 'O2 Name']),
-                nearestO2_location: getColumnValue(row, ['nearestO2_location', 'nearest_o2_location', 'O2 Location']),
-                nearestO2_phone: getColumnValue(row, ['nearestO2_phone', 'nearest_o2_phone', 'O2 Phone']),
                 nearestHospital_name: getColumnValue(row, ['nearestHospital_name', 'hospital_name']),
                 nearestHospital_services: getColumnValue(row, ['nearestHospital_services', 'hospital_services']),
                 nearestHospital_address: getColumnValue(row, ['nearestHospital_address', 'hospital_address']),
@@ -126,8 +144,10 @@
         const siteSelect = document.getElementById('diveSiteSelect');
         const vhfSelect = document.getElementById('vhfSelect');
         const clubSelect = document.getElementById('clubDOSelect');
+        const smInternalSelect = document.getElementById('smInternalSelect');
         
         siteSelect.innerHTML = ''; vhfSelect.innerHTML = ''; clubSelect.innerHTML = '<option value="">-- Select --</option>';
+        smInternalSelect.innerHTML = '<option value="">-- Select internal shore marshall --</option>';
         
         diveSites.forEach(site => {
             siteSelect.appendChild(new Option(site.name, site.id));
@@ -137,15 +157,30 @@
             vhfSelect.appendChild(new Option(`${vhf.name} (${vhf.channel})`, vhf.channel));
         });
         
+        // Populate both club dropdowns (Club Contact and Internal Shore Marshall)
         clubContacts.forEach(contact => {
             let display = `${contact.name} - ${contact.phone}`;
             if (contact.role) display += ` (${contact.role})`;
             clubSelect.appendChild(new Option(display, JSON.stringify(contact)));
+            smInternalSelect.appendChild(new Option(display, JSON.stringify(contact)));
         });
+        
+        // Toggle internal/external shore marshall fields
+        const radios = document.querySelectorAll('input[name="smType"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', toggleShoreMarshallFields);
+        });
+        toggleShoreMarshallFields();
         
         document.getElementById('diveType').addEventListener('change', () => updateConditionalFields());
         document.getElementById('diveSiteSelect').addEventListener('change', () => updateConditionalFields());
         updateConditionalFields();
+    }
+    
+    function toggleShoreMarshallFields() {
+        const isInternal = document.querySelector('input[name="smType"]:checked').value === 'internal';
+        document.getElementById('smInternalDiv').style.display = isInternal ? 'block' : 'none';
+        document.getElementById('smExternalDiv').style.display = isInternal ? 'none' : 'block';
     }
     
     function updateConditionalFields() {
@@ -173,17 +208,68 @@
     
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
     
+    function formatRecompressionInfo(raw) {
+        // Add University Hospital Kerry if not already in raw, or override
+        let chambers = [];
+        if (raw && raw.trim()) {
+            // Split by <br> or newline
+            let parts = raw.split(/<br>|\n/);
+            for (let p of parts) {
+                if (p.trim()) chambers.push(p.trim());
+            }
+        }
+        // Ensure Galway and Craigavon are present (they usually are)
+        if (!chambers.some(c => c.includes('Galway'))) {
+            chambers.push('Galway University Hospital 📞 (091) 524222');
+        }
+        if (!chambers.some(c => c.includes('Craigavon'))) {
+            chambers.push('Craigavon General Hospital 📞 +44 8017 6233 0711 (Day +44 1762 33 4444, Emergency +44 1762 33 6711)');
+        }
+        // Add University Hospital Kerry in Tralee
+        if (!chambers.some(c => c.includes('Kerry') || c.includes('Tralee'))) {
+            chambers.push('University Hospital Kerry, Tralee - Full emergency services and A&E department, Rathass, Tralee, Co. Kerry, V92 NX94 📞 (066) 718 4000');
+        }
+        // Format as separate lines with "⚠️ Activated via Coast Guard" on its own line
+        let result = '⚠️ Activated via Coast Guard';
+        for (let c of chambers) {
+            result += '<br>' + c;
+        }
+        return result;
+    }
+    
     function generatePlan() {
         const siteId = document.getElementById('diveSiteSelect').value;
         const site = diveSites.find(s => s.id == siteId);
         if (!site) return alert('Select a dive site.');
         
-        // Alternative site is now free text
         const altSiteText = document.getElementById('altSiteText').value.trim() || 'None';
-        
         const diveType = document.getElementById('diveType').value;
-        const shoreMarshall = document.getElementById('shoreMarshall').value.trim() || '—';
-        const shorePhone = document.getElementById('shorePhone').value.trim() || '—';
+        
+        // New fields
+        const etr = document.getElementById('etr').value.trim() || 'Not specified';
+        const totalCrew = document.getElementById('totalCrew').value.trim() || 'Not specified';
+        const dod = document.getElementById('dod').value.trim() || 'Not specified';
+        
+        // Shore Marshall from internal/external
+        let shoreMarshall = '', shorePhone = '';
+        const isInternal = document.querySelector('input[name="smType"]:checked').value === 'internal';
+        if (isInternal) {
+            const selected = document.getElementById('smInternalSelect').value;
+            if (selected) {
+                try {
+                    const obj = JSON.parse(selected);
+                    shoreMarshall = obj.name;
+                    shorePhone = obj.phone;
+                } catch(e) {}
+            }
+            if (!shoreMarshall) shoreMarshall = 'Not selected';
+            if (!shorePhone) shorePhone = '';
+        } else {
+            shoreMarshall = document.getElementById('smExternalName').value.trim() || 'Not provided';
+            shorePhone = document.getElementById('smExternalPhone').value.trim() || '';
+        }
+        
+        // Club Contact (formerly DO)
         let clubContact = document.getElementById('clubDOSelect').value;
         if (clubContact) { try { clubContact = `${JSON.parse(clubContact).name} - ${JSON.parse(clubContact).phone}`; } catch(e) {} }
         else clubContact = document.getElementById('clubDOFree').value.trim() || 'Not provided';
@@ -205,6 +291,12 @@
         const vhfName = vhfEntry ? vhfEntry.name : (site.localVHF_name || 'Local CG');
         const vhfDisplay = `${vhfName} (${vhfChannel})`;
         
+        // Boat dive transit report note
+        const transitNote = (diveType === 'boat') ? '<p><strong>📡 Transit Report (TR):</strong> All boat dives must log a Transit Report to the local Coast Guard Station and close out the TR on returning safely.</p>' : '';
+        
+        // Recompression chambers formatted
+        const recompFormatted = formatRecompressionInfo(site.recompression_info);
+        
         let html = `<h2>🌊 DIVE EMERGENCY PLAN</h2>
         <p><strong>Date of Plan Created:</strong> ${new Date().toLocaleString()}</p>
         <hr>
@@ -215,6 +307,11 @@
         <strong>Local VHF:</strong> ${escapeHtml(vhfDisplay)}<br>
         <strong>Emergency VHF:</strong> 16<br>
         <strong>Mobile Coverage:</strong> ${escapeHtml(site.mobileCoverage || 'Not Confirmed')}</p>
+        
+        <h3>⏱️ Operational Details</h3>
+        <p><strong>Estimated Time of Return (ETR):</strong> ${escapeHtml(etr)}<br>
+        <strong>Total Crew:</strong> ${escapeHtml(totalCrew)}<br>
+        <strong>Dive Officer of the Day (DOD):</strong> ${escapeHtml(dod)}</p>
         
         <h3>👥 Personnel</h3>
         <p><strong>Shore Marshall:</strong> ${escapeHtml(shoreMarshall)} — ${escapeHtml(shorePhone)}<br>
@@ -228,6 +325,7 @@
         
         <h3>🚨 Coast Guard</h3>
         <p>📞 112/999 &nbsp;|&nbsp; VHF 16</p>
+        ${transitNote}
         
         <h3>🏨 Nearest Hospital</h3>
         <p><strong>${escapeHtml(site.nearestHospital_name || 'Not specified')}</strong><br>
@@ -245,10 +343,10 @@
         ${escapeHtml(site.garda_address || 'Church Square')}<br>
         📞 ${escapeHtml(site.garda_localPhone || '(021) 477 9250')}</p>
         
-        <h3>🫧 Recompression Chamber</h3>
-        <p>⚠️ Activated via Coast Guard. ${escapeHtml(site.recompression_info || 'Galway / Craigavon')}</p>
+        <h3>🫧 Recompression Chambers</h3>
+        <p>${recompFormatted}</p>
         <hr>
-        <p><em>Brief all divers on O2, first aid, and vehicle location.</em></p>`;
+        <p><em>Brief all divers on O2, first aid, vehicle location, and emergency procedures.</em></p>`;
         
         const out = document.getElementById('planOutput');
         out.innerHTML = html;
