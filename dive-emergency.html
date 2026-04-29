@@ -6,142 +6,28 @@
     <title>Dive Emergency Plan | Sultans of Surf</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
-        /* Theme to match www.sultansofsurf.com (approximate) */
         * { box-sizing: border-box; }
-        body {
-            font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f4f9ff;
-            color: #1e2a3a;
-        }
-        .form-container, .plan-output {
-            background: #ffffff;
-            border-radius: 24px;
-            padding: 28px 32px;
-            margin-bottom: 32px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
-        }
-        h1 {
-            font-size: 2rem;
-            color: #0b5e7c;
-            margin-top: 0;
-            border-left: 5px solid #0b5e7c;
-            padding-left: 20px;
-        }
-        label {
-            font-weight: 600;
-            display: inline-block;
-            width: 240px;
-            margin-top: 12px;
-            color: #1e4663;
-        }
-        input, select, textarea {
-            padding: 8px 14px;
-            margin: 6px 0 12px;
-            width: 360px;
-            border-radius: 12px;
-            border: 1px solid #cbd6e4;
-            font-size: 0.95rem;
-            transition: 0.2s;
-        }
-        input:focus, select:focus {
-            border-color: #0b5e7c;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(11,94,124,0.1);
-        }
-        .section {
-            background: #f8fafd;
-            border-left: 5px solid #0b5e7c;
-            padding: 18px 22px;
-            margin: 28px 0;
-            border-radius: 16px;
-        }
-        button {
-            background: #0b5e7c;
-            color: white;
-            padding: 12px 28px;
-            border: none;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #094a62;
-        }
-        .print-btn {
-            background: #2b7e3a;
-            margin-left: 12px;
-        }
-        .print-btn:hover {
-            background: #1f5e2b;
-        }
-        .loading {
-            background: #eef2f7;
-            padding: 20px;
-            border-radius: 20px;
-            text-align: center;
-            color: #0b5e7c;
-        }
-        .radio-group {
-            display: inline-flex;
-            gap: 20px;
-            align-items: center;
-            margin: 6px 0 12px;
-            background: #f0f4f9;
-            padding: 6px 16px;
-            border-radius: 40px;
-        }
-        .radio-group label {
-            width: auto;
-            margin: 0;
-            font-weight: normal;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .radio-group input {
-            width: auto;
-            margin: 0;
-        }
-        .sm-fields {
-            margin-left: 260px;
-            margin-bottom: 16px;
-        }
-        @media (max-width: 760px) {
-            label, input, select, .sm-fields { width: 100%; margin-left: 0; }
-            .radio-group { display: flex; flex-wrap: wrap; }
-        }
-        @media print {
-            .form-container, .print-btn, #generateBtn { display: none; }
-            .plan-output { margin: 0; padding: 0; box-shadow: none; }
-            body { background: white; }
-        }
-        .error-msg {
-            background: #ffe6e6;
-            border-left: 5px solid #cc0000;
-            padding: 15px;
-            border-radius: 12px;
-            color: #990000;
-        }
-        .debug-info {
-            background: #f0f0f0;
-            font-family: monospace;
-            font-size: 12px;
-            padding: 10px;
-            margin-top: 15px;
-            border-radius: 8px;
-            display: none;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1280px; margin: 0 auto; padding: 20px; background: #f4f9ff; color: #1e2a3a; }
+        .form-container, .plan-output { background: #ffffff; border-radius: 24px; padding: 28px 32px; margin-bottom: 32px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
+        h1 { font-size: 2rem; color: #0b5e7c; margin-top: 0; border-left: 5px solid #0b5e7c; padding-left: 20px; }
+        label { font-weight: 600; display: inline-block; width: 240px; margin-top: 12px; color: #1e4663; }
+        input, select, textarea { padding: 8px 14px; margin: 6px 0 12px; width: 360px; border-radius: 12px; border: 1px solid #cbd6e4; }
+        .section { background: #f8fafd; border-left: 5px solid #0b5e7c; padding: 18px 22px; margin: 28px 0; border-radius: 16px; }
+        button { background: #0b5e7c; color: white; padding: 12px 28px; border: none; border-radius: 40px; cursor: pointer; font-weight: bold; }
+        .print-btn { background: #2b7e3a; margin-left: 12px; }
+        .loading { background: #eef2f7; padding: 20px; border-radius: 20px; text-align: center; }
+        .radio-group { display: inline-flex; gap: 20px; align-items: center; background: #f0f4f9; padding: 6px 16px; border-radius: 40px; }
+        .radio-group label { width: auto; margin: 0; font-weight: normal; }
+        .sm-fields { margin-left: 260px; margin-bottom: 16px; }
+        @media (max-width: 760px) { label, input, select, .sm-fields { width: 100%; margin-left: 0; } .radio-group { flex-wrap: wrap; } }
+        @media print { .form-container, .print-btn, #generateBtn { display: none; } .plan-output { margin: 0; padding: 0; } }
+        .error-msg { background: #ffe6e6; border-left: 5px solid #cc0000; padding: 15px; border-radius: 12px; }
     </style>
 </head>
 <body>
 <div class="form-container">
     <h1>🌊 Dive Emergency Plan</h1>
-    <div id="loadingMsg" class="loading">🌊 Loading dive site database from Google Sheets ...</div>
+    <div id="loadingMsg" class="loading">🌊 Loading dive site database ...</div>
     <form id="emergencyForm" style="display:none;">
         <label>📍 Dive Site:</label> <select id="diveSiteSelect" required></select><br>
         <label>🔄 Alternative Site (free text):</label> <input type="text" id="altSiteText" placeholder="e.g. Bull Rock, Shelly Cove"><br>
@@ -152,7 +38,6 @@
         <label>👥 Total Crew:</label> <input type="number" id="totalCrew" placeholder="Number of people"><br>
         <label>⚓ Dive Officer of the Day (DOD):</label> <input type="text" id="dod" placeholder="Name and phone"><br>
         
-        <!-- Shore Marshall with radio buttons side by side -->
         <label>🛟 Shore Marshall:</label>
         <div class="radio-group">
             <label><input type="radio" name="smType" value="internal" checked> Internal (Club Member)</label>
@@ -190,70 +75,46 @@
         });
     }
 
-    // Flexible column finder: case-insensitive, trims, matches any of the given aliases
-    function getColumnValue(row, possibleNames) {
-        for (let alias of possibleNames) {
-            // Try exact match first
-            if (row.hasOwnProperty(alias) && row[alias] !== undefined && row[alias] !== '') return row[alias];
-            // Try case-insensitive
-            const lowerAlias = alias.toLowerCase();
-            for (let key in row) {
-                if (key.toLowerCase() === lowerAlias && row[key] !== '') return row[key];
-            }
-        }
-        return '';
-    }
-
     async function loadAllData() {
         try {
             const [sitesData, contactsData] = await Promise.all([fetchCSV(CSV_URLS.diveSites), fetchCSV(CSV_URLS.clubContacts)]);
             if (!sitesData.length) throw new Error('No dive sites found');
             
-            // ----- DEBUG: Log actual column names from the CSV -----
-            const sampleRow = sitesData[0];
-            const actualColumns = Object.keys(sampleRow);
-            console.log('🔍 DIVE SITES COLUMN NAMES:', actualColumns);
-            console.log('📋 First row sample:', sampleRow);
-            // Display a hidden debug panel for easy copy/paste (optional)
-            const debugDiv = document.createElement('div');
-            debugDiv.className = 'debug-info';
-            debugDiv.innerHTML = `<strong>Debug Info:</strong> Columns found: ${actualColumns.join(', ')}<br>First row: ${JSON.stringify(sampleRow)}`;
-            document.querySelector('.form-container').appendChild(debugDiv);
-            debugDiv.style.display = 'block';
-            
-            // Map using flexible getter with multiple common aliases
+            // Direct mapping using exact column names (no need for flexible getter now)
             diveSites = sitesData.map(row => ({
-                id: getColumnValue(row, ['id', 'ID', 'Id']),
-                name: getColumnValue(row, ['name', 'Name', 'site_name', 'Site Name']),
-                gridRef: getColumnValue(row, ['gridRef', 'grid_ref', 'Grid Reference', 'Location', 'gridref', 'GPS']),
-                localVHF_name: getColumnValue(row, ['localVHF_name', 'local_vhf_name', 'VHF Name', 'Local VHF Station', 'VHF Station', 'vhf_name']),
-                localVHF_channel: getColumnValue(row, ['localVHF_channel', 'local_vhf_channel', 'VHF Channel', 'Channel', 'CH', 'vhf_channel']),
-                mobileCoverage: getColumnValue(row, ['mobileCoverage', 'mobile_coverage', 'Mobile Coverage', 'Coverage']),
-                defaultO2Boat: getColumnValue(row, ['defaultO2Boat', 'o2_boat', 'O2 Boat']),
-                defaultFirstAidBoat: getColumnValue(row, ['defaultFirstAidBoat', 'first_aid_boat', 'First Aid Boat']),
-                defaultO2Shore: getColumnValue(row, ['defaultO2Shore', 'o2_shore', 'O2 Shore']),
-                defaultFirstAidShore: getColumnValue(row, ['defaultFirstAidShore', 'first_aid_shore', 'First Aid Shore']),
-                evMake: getColumnValue(row, ['evMake', 'ev_make', 'Vehicle Make']),
-                evLocation: getColumnValue(row, ['evLocation', 'ev_location', 'Vehicle Location']),
-                evColour: getColumnValue(row, ['evColour', 'ev_colour', 'Vehicle Colour']),
-                evReg: getColumnValue(row, ['evReg', 'ev_reg', 'Registration']),
-                nearestHospital_name: getColumnValue(row, ['nearestHospital_name', 'hospital_name', 'Hospital Name', 'Nearest Hospital']),
-                nearestHospital_services: getColumnValue(row, ['nearestHospital_services', 'hospital_services', 'Services']),
-                nearestHospital_address: getColumnValue(row, ['nearestHospital_address', 'hospital_address', 'Address']),
-                nearestHospital_phone: getColumnValue(row, ['nearestHospital_phone', 'hospital_phone', 'Phone']),
-                gp_name: getColumnValue(row, ['gp_name', 'gp Name', 'GP Name']),
-                gp_phone1: getColumnValue(row, ['gp_phone1', 'gp_phone', 'GP Phone']),
-                gp_phone2: getColumnValue(row, ['gp_phone2', 'gp_phone_alt']),
-                gp_address: getColumnValue(row, ['gp_address', 'gp Address', 'GP Address']),
-                garda_station: getColumnValue(row, ['garda_station', 'garda Station', 'Garda Station']),
-                garda_address: getColumnValue(row, ['garda_address', 'garda Address', 'Garda Address']),
-                garda_localPhone: getColumnValue(row, ['garda_localPhone', 'garda_phone', 'Garda Phone']),
-                recompression_info: getColumnValue(row, ['recompression_info', 'recompression', 'Chamber Info', 'Recompression'])
+                id: row.id,
+                name: row.name,
+                gridRef: row.gridRef,
+                // SWAPPED: because in your sheet localVHF_name holds channel number, localVHF_channel holds name
+                localVHF_name: row.localVHF_channel,   // now correctly the station name
+                localVHF_channel: row.localVHF_name,   // now correctly the channel number
+                mobileCoverage: row.mobileCoverage,
+                defaultO2Boat: row.defaultO2Boat,
+                defaultFirstAidBoat: row.defaultFirstAidBoat,
+                defaultO2Shore: row.defaultO2Shore,
+                defaultFirstAidShore: row.defaultFirstAidShore,
+                // Emergency vehicle fields are not in your sheet yet – we'll add empty fallbacks
+                evMake: '',
+                evLocation: '',
+                evColour: '',
+                evReg: '',
+                nearestHospital_name: row.nearestHospital_name,
+                nearestHospital_services: row.nearestHospital_services,
+                nearestHospital_address: row.nearestHospital_address,
+                nearestHospital_phone: row.nearestHospital_phone,
+                gp_name: row.gp_name,
+                gp_phone1: row.gp_phone1,
+                gp_phone2: row.gp_phone2,
+                gp_address: row.gp_address,
+                garda_station: row.garda_station || 'Kinsale Garda Station (default)',
+                garda_address: row.garda_address,
+                garda_localPhone: row.garda_localPhone,
+                recompression_info: row.recompression_info || 'Galway University Hospital 📞 (091) 524222<br>Craigavon General Hospital 📞 +44 8017 6233 0711 (Day +44 1762 33 4444, Emergency +44 1762 33 6711)'
             }));
             
             clubContacts = contactsData;
             
-            // Build VHF list from diveSites
+            // Build VHF list from the correctly swapped fields
             const vhfMap = new Map();
             diveSites.forEach(site => {
                 if (site.localVHF_name && site.localVHF_channel) {
@@ -267,7 +128,7 @@
             document.getElementById('emergencyForm').style.display = 'block';
         } catch (err) {
             console.error(err);
-            document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">❌ Load error: ${err.message}. Check console and Google Sheet publishing.</div>`;
+            document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">❌ Load error: ${err.message}</div>`;
         }
     }
 
@@ -295,7 +156,6 @@
             smInternalSelect.appendChild(new Option(display, JSON.stringify(contact)));
         });
         
-        // Toggle internal/external shore marshall fields
         const radios = document.querySelectorAll('input[name="smType"]');
         radios.forEach(radio => radio.addEventListener('change', toggleShoreMarshallFields));
         toggleShoreMarshallFields();
@@ -336,20 +196,6 @@
     
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
     
-    // Format recompression info: split lines, remove any "Kerry" addition (just use sheet data)
-    function formatRecompressionInfo(raw) {
-        if (!raw) return '⚠️ Activated via Coast Guard<br>Galway University Hospital 📞 (091) 524222<br>Craigavon General Hospital 📞 +44 8017 6233 0711 (Day +44 1762 33 4444, Emergency +44 1762 33 6711)';
-        // Replace raw presentation: if it contains the old inline warning, clean it up
-        let cleaned = raw.replace(/⚠️ Activated via Coast Guard\.?\s*/i, '');
-        // Split by <br> or newline
-        let lines = cleaned.split(/<br>|\n/).filter(l => l.trim());
-        let result = '⚠️ Activated via Coast Guard';
-        for (let line of lines) {
-            result += '<br>' + line.trim();
-        }
-        return result;
-    }
-    
     function generatePlan() {
         const siteId = document.getElementById('diveSiteSelect').value;
         const site = diveSites.find(s => s.id == siteId);
@@ -361,7 +207,6 @@
         const totalCrew = document.getElementById('totalCrew').value.trim() || 'Not specified';
         const dod = document.getElementById('dod').value.trim() || 'Not specified';
         
-        // Shore Marshall
         let shoreMarshall = '', shorePhone = '';
         const isInternal = document.querySelector('input[name="smType"]:checked').value === 'internal';
         if (isInternal) {
@@ -379,7 +224,6 @@
             shorePhone = document.getElementById('smExternalPhone').value.trim() || '';
         }
         
-        // Club Contact
         let clubContact = document.getElementById('clubDOSelect').value;
         if (clubContact) { try { clubContact = `${JSON.parse(clubContact).name} - ${JSON.parse(clubContact).phone}`; } catch(e) {} }
         else clubContact = document.getElementById('clubDOFree').value.trim() || 'Not provided';
@@ -403,7 +247,14 @@
         
         const transitNote = (diveType === 'boat') ? '<p><strong>📡 Transit Report (TR):</strong> All boat dives must log a Transit Report to the local Coast Guard Station and close out the TR on returning safely.</p>' : '';
         
-        const recompFormatted = formatRecompressionInfo(site.recompression_info);
+        // Format recompression info: ensure "⚠️ Activated via Coast Guard" on its own line
+        let recompText = site.recompression_info;
+        if (!recompText) recompText = 'Galway University Hospital 📞 (091) 524222<br>Craigavon General Hospital 📞 +44 8017 6233 0711 (Day +44 1762 33 4444, Emergency +44 1762 33 6711)';
+        let lines = recompText.split(/<br>|\n/).filter(l => l.trim());
+        let recompFormatted = '⚠️ Activated via Coast Guard';
+        for (let line of lines) {
+            if (!line.includes('⚠️')) recompFormatted += '<br>' + line.trim();
+        }
         
         let html = `<h2>🌊 DIVE EMERGENCY PLAN</h2>
         <p><strong>Date of Plan Created:</strong> ${new Date().toLocaleString()}</p>
@@ -447,8 +298,8 @@
         ${escapeHtml(site.gp_address || 'Kinsale')}</p>
         
         <h3>👮 Garda</h3>
-        <p><strong>${escapeHtml(site.garda_station || 'Kinsale')}</strong><br>
-        ${escapeHtml(site.garda_address || 'Church Square')}<br>
+        <p><strong>${escapeHtml(site.garda_station || 'Kinsale Garda Station')}</strong><br>
+        ${escapeHtml(site.garda_address || 'Church Square, Sleveen, Kinsale')}<br>
         📞 ${escapeHtml(site.garda_localPhone || '(021) 477 9250')}</p>
         
         <h3>🫧 Recompression Chambers</h3>
