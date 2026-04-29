@@ -743,9 +743,13 @@ async function getFormattedExportText() {
 
 const emergencyBtn = document.getElementById('emergencyBtn');
 if (emergencyBtn) {
-  emergencyBtn.addEventListener('click', function() {
+  emergencyBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    alert("Emergency button clicked! Opening URL...");  // test line
     window.open('https://sultansofsurf.com/dive-emergency', '_blank');
   });
+} else {
+  console.error("Emergency button not found in the DOM");
 }
 
 // ======================== SAVED PLANS ========================

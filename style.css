@@ -607,16 +607,22 @@ input[type="checkbox"] {
   width: 100%;
 }
 
-/* Emergency button */
+/* Emergency button – RED with white text */
 .btn-emergency {
-  background: linear-gradient(135deg, #ff4d4d, #b30000);
-  color: white;
-  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+  background: #e60000;        /* solid red background */
+  color: #ffffff !important;  /* white text, force override */
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  font-weight: bold;
+  padding: 12px 20px;         /* ensure comfortable click area */
+  width: auto;                /* prevent stretching */
+  min-width: 200px;
+  display: inline-block;      /* avoid full‑width if not desired */
 }
 .btn-emergency:hover {
+  background: #cc0000;
   transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+  cursor: pointer;
 }
 
 .emergency-card {
