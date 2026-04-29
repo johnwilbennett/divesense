@@ -322,12 +322,9 @@ async function getClosestExtremes(station, diveDate, diveHour, diveMinute) {
   // This can happen if the API did not return a tide due to date boundary issues.
   // Fetch an extra day on the side where the missing tide should be.
   if (prev && next && prev.type === next.type) {
-    console.warn("Both prev and next have same type, fetching additional day...");
-    let extraDelta = (prev.type === "High") ? -2 : 2; // if both High, the missing Low is after next? Actually after High comes Low, so check +2 days.
-    // Better: fetch both -2 and +2
+    console.warn("Both prev and next have same type, fetching additional days...");
     const extraTides = await fetchTidesForRange(-2, 2);
     extraTides.sort((a,b) => a.absoluteMinutes - b.absoluteMinutes);
-    // Recompute prev/next using the larger set
     let newPrev = null, newNext = null;
     for (let i = 0; i < extraTides.length; i++) {
       if (extraTides[i].absoluteMinutes <= targetAbsolute) newPrev = extraTides[i];
@@ -337,7 +334,6 @@ async function getClosestExtremes(station, diveDate, diveHour, diveMinute) {
       prev = newPrev;
       next = newNext;
     } else {
-      // Fallback: keep original but log error
       console.error("Still missing opposite extreme after expanding range");
     }
   }
@@ -365,8 +361,8 @@ async function getTideDirection(station, date, hour, minute) {
   return "No Data";
 }
 
-// ======================== UI BUILDING (unchanged except using new tide functions) ========================
-function buildCalendar() { /* same as before */ 
+// ======================== UI BUILDING ========================
+function buildCalendar() {
   const container = document.getElementById('calendarContainer');
   if (!container) return;
   const year = currentCalendarMonth.getFullYear();
@@ -406,7 +402,7 @@ function buildCalendar() { /* same as before */
   });
 }
 
-function initStations() { /* same */
+function initStations() {
   const container = document.getElementById('stationScroll');
   if (!container) return;
   let html = '';
@@ -420,7 +416,7 @@ function initStations() { /* same */
   });
 }
 
-function initTimeSpinners() { /* same as corrected version */
+function initTimeSpinners() {
   const hourWheel = document.getElementById('hourWheel');
   const minuteWheel = document.getElementById('minuteWheel');
   if (!hourWheel || !minuteWheel) return;
@@ -483,7 +479,7 @@ function initTimeSpinners() { /* same as corrected version */
   setTimeout(scrollToCurrentValue, 300);
 }
 
-function initDiveType() { /* same */
+function initDiveType() {
   const radios = document.querySelectorAll('input[name="diveType"]');
   const coxField = document.getElementById('coxField');
   const boatDepartureField = document.getElementById('boatDepartureField');
@@ -501,7 +497,7 @@ function initDiveType() { /* same */
   update();
 }
 
-function initChips() { /* same */
+function initChips() {
   const categories = ["Reef","Wreck","Drift","Deep","Night","Snorkel","Kelp","Photography","Navigation","Training","Citizen Science","Fitness Test"];
   const container = document.getElementById('chipsContainer');
   if (!container) return;
@@ -603,13 +599,14 @@ async function updateDetailed() {
   } else html = '<div class="detail-row">⚠️ Weather data unavailable</div>';
 
   const { prev, next } = await getClosestExtremes(currentStation, currentDate, selectedHour, selectedMinute);
+  const targetAbsolute = selectedHour * 60 + selectedMinute;
   if (prev || next) {
     html += `<div class="detail-row" style="margin-top:12px;"><strong>📊 Relevant tides for this dive:</strong></div>`;
     if (prev) {
       let daySuffix = '';
       if (prev.dayOffset === -1) daySuffix = ' (previous day)';
       else if (prev.dayOffset === 1) daySuffix = ' (next day)';
-      const diffMinutes = (selectedHour*60+selectedMinute) - prev.minutesInDay;
+      const diffMinutes = targetAbsolute - prev.absoluteMinutes;
       const absDiff = Math.abs(diffMinutes);
       html += `<div class="detail-row">← Previous ${prev.type} at ${prev.time} (${prev.height.toFixed(2)}m)${daySuffix} - ${Math.floor(absDiff/60)}h ${absDiff%60}m before</div>`;
     }
@@ -617,7 +614,7 @@ async function updateDetailed() {
       let daySuffix = '';
       if (next.dayOffset === -1) daySuffix = ' (previous day)';
       else if (next.dayOffset === 1) daySuffix = ' (next day)';
-      const diffMinutes = next.minutesInDay - (selectedHour*60+selectedMinute);
+      const diffMinutes = next.absoluteMinutes - targetAbsolute;
       const absDiff = Math.abs(diffMinutes);
       html += `<div class="detail-row">→ Next ${next.type} at ${next.time} (${next.height.toFixed(2)}m)${daySuffix} - ${Math.floor(absDiff/60)}h ${absDiff%60}m after</div>`;
     }
@@ -664,6 +661,7 @@ async function getFormattedExportText() {
   let hourSwell = swell.find(s => parseInt(s.time) === currentHour) || { swellHeight:0, swellPeriod:0, swellDir:0 };
 
   const { prev, next } = await getClosestExtremes(currentStation, currentDate, currentHour, currentMinute);
+  const targetAbsolute = currentHour * 60 + currentMinute;
 
   function formatTide(tide) {
     if (!tide) return 'N/A';
@@ -671,6 +669,13 @@ async function getFormattedExportText() {
     if (tide.dayOffset === -1) daySuffix = ' (previous day)';
     else if (tide.dayOffset === 1) daySuffix = ' (next day)';
     return `${tide.time} (${tide.height.toFixed(2)}m)${daySuffix}`;
+  }
+
+  function formatDiff(tide, isPrev) {
+    if (!tide) return '';
+    const diffMinutes = isPrev ? targetAbsolute - tide.absoluteMinutes : tide.absoluteMinutes - targetAbsolute;
+    const absDiff = Math.abs(diffMinutes);
+    return `${Math.floor(absDiff/60)}h ${absDiff%60}m`;
   }
 
   const categories = Array.from(selectedChips).join(', ');
@@ -701,8 +706,8 @@ async function getFormattedExportText() {
   text += "Dive Site: " + (diveSite || 'Not specified') + "\n";
   text += "Dive Type: " + diveType + "\n\n";
   text += "🌊 TIDES\n─────────────────────────────────\n";
-  text += "Previous extreme: " + formatTide(prev) + "\n";
-  text += "Next extreme:     " + formatTide(next) + "\n\n";
+  text += "Previous extreme: " + formatTide(prev) + (prev ? ` - ${formatDiff(prev, true)} before` : '') + "\n";
+  text += "Next extreme:     " + formatTide(next) + (next ? ` - ${formatDiff(next, false)} after` : '') + "\n\n";
   text += "🌡️ CONDITIONS AT DIVE TIME\n─────────────────────────────────\n";
   text += weatherText + "\n";
   if (weatherData.sunrise && weatherData.sunset) text += "\nSunrise: " + weatherData.sunrise + "\nSunset: " + weatherData.sunset + "\n";
