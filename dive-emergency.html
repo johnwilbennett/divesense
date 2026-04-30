@@ -141,14 +141,66 @@
             font-size: 0.9rem;
         }
         /* ===== END SHORE MARSHALL ===== */
+        
+        /* ===== RESOURCE BUTTONS SECTION ===== */
+        .resource-section {
+            background: #f0f7fc;
+            border-radius: 20px;
+            padding: 20px 24px;
+            margin-top: 30px;
+            border: 1px solid #dce5f0;
+        }
+        .resource-section h3 {
+            margin: 0 0 16px 0;
+            color: #0b5e7c;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .resource-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .resource-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #ffffff;
+            color: #1e4663;
+            padding: 10px 20px;
+            border-radius: 40px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 1px solid #cbd6e4;
+            transition: all 0.2s ease;
+        }
+        .resource-btn:hover {
+            background: #0b5e7c;
+            color: white;
+            border-color: #0b5e7c;
+            transform: translateY(-2px);
+        }
+        /* ===== END RESOURCE BUTTONS ===== */
+        
         @media (max-width: 760px) {
             label { width: 100%; display: block; }
             input, select, textarea { width: 100%; }
             .sm-radio-group { gap: 16px; }
             .sm-radio-group label { padding: 6px 12px; font-size: 0.85rem; }
+            .resource-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .resource-btn {
+                justify-content: center;
+            }
         }
         @media print {
-            .form-container, .print-btn, #generateBtn { display: none; }
+            .form-container, .print-btn, #generateBtn, .resource-section { display: none; }
             .plan-output { margin: 0; padding: 0; }
         }
         .error-msg {
@@ -222,6 +274,19 @@
         
         <button type="button" id="generateBtn">📋 Generate Emergency Plan</button>
     </form>
+    
+    <!-- ===== RESOURCE BUTTONS SECTION ===== -->
+    <div class="resource-section">
+        <h3>📚 Emergency & Planning Resources</h3>
+        <div class="resource-buttons">
+            <a href="Dive%20Log%20Slate.pdf" target="_blank" class="resource-btn">📋 Dive Log Slate</a>
+            <a href="Dive%20Brief.pdf" target="_blank" class="resource-btn">📝 Dive Brief</a>
+            <a href="Emergency%20Plan%20Template%20(Blank).pdf" target="_blank" class="resource-btn">📄 Emergency Plan Template (Blank)</a>
+            <a href="Rescue%20Management%20Sheet.pdf" target="_blank" class="resource-btn">🆘 Rescue Management Sheet</a>
+        </div>
+    </div>
+    <!-- ===== END RESOURCE BUTTONS ===== -->
+    
 </div>
 <div id="planOutput" class="plan-output" style="display:none;"></div>
 
