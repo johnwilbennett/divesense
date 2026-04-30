@@ -322,7 +322,7 @@
     <!-- ===== DATA MANAGEMENT CARD (LESS PROMINENT) ===== -->
     <div class="data-management-card">
         <h3>📊 Manage Dive Site Database</h3>
-        <p>Club members: edit dive site data (restricted access). <strong>Do not store personlal info that you do not want in a public domain.</strong></p>
+        <p>Club members: edit dive site data (restricted access). <strong>Do not store personal info – sheet is publicly readable.</strong></p>
         <div class="resource-buttons">
             <a href="https://docs.google.com/spreadsheets/d/15UVEVbPeB0xFznhdE_vKzNDBCx3wq5IYpVtD2JIrtRc/edit?usp=sharing" 
                target="_blank" 
@@ -519,7 +519,8 @@
         const evReg = document.getElementById('evReg')?.value || site.evReg || '';
         const vhfDisplayValue = document.getElementById('vhfDisplay').value;
         
-        const transitNote = (diveType === 'boat') ? '<p><strong>📡 Transit Report (TR):</strong> All boat dives must log a Transit Report to the local Coast Guard Station and close out the TR on returning safely.</p>' : '';
+        const localCoastGuardLine = `<p><strong>Local Coast Guard:</strong> ${escapeHtml(site.localVHF_name)} VHF ${escapeHtml(site.localVHF_channel)}</p>`;
+        const transitNote = (diveType === 'boat') ? localCoastGuardLine + '<p><strong>📡 Transit Report (TR):</strong> All boat dives must log a Transit Report to the local Coast Guard Station and close out the TR on returning safely.</p>' : '';
         
         let recompText = site.recompression_info;
         let lines = recompText.split(/<br>|\n/).filter(l => l.trim());
@@ -563,11 +564,13 @@
         ${escapeHtml(site.nearestHospital_services || '')}<br>
         ${escapeHtml(site.nearestHospital_address || '')}<br>
         📞 ${escapeHtml(site.nearestHospital_phone || '')}</p>
+        <p>🏥 <a href="https://www2.hse.ie/services/primary-care-centres/" target="_blank" rel="noopener noreferrer">Find a primary care centre</a></p>
         
         <h3>👨‍⚕️ GP / Out of Hours</h3>
         <p><strong>${escapeHtml(site.gp_name || 'SouthDoc')}</strong><br>
         📞 ${escapeHtml(site.gp_phone1 || '1850 335 999')} ${site.gp_phone2 ? '/ ' + escapeHtml(site.gp_phone2) : ''}<br>
         ${escapeHtml(site.gp_address || 'Kinsale')}</p>
+        <p>🏥 <a href="https://www2.hse.ie/services/find-a-gp/" target="_blank" rel="noopener noreferrer">Find a GP</a></p>
         
         <h3>👮 Garda</h3>
         <p><strong>${escapeHtml(site.garda_station)}</strong><br>
