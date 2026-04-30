@@ -186,13 +186,35 @@
         }
         /* ===== END RESOURCE BUTTONS ===== */
         
-        /* ===== DATA MANAGEMENT CARD (BETTER PRACTICE) ===== */
-        #data-management-card {
-            background: #eef2fa;
-            border: 1px solid #cbdde9;
+        /* ===== DATA MANAGEMENT CARD (LESS PROMINENT) ===== */
+        .data-management-card {
+            background: #f9fbfd;
+            border: 1px solid #e2edf7;
+            border-radius: 16px;
+            padding: 12px 20px;
+            margin-top: 20px;
         }
-        #data-management-card h3:before {
-            content: "🔒 ";
+        .data-management-card h3 {
+            margin: 0 0 6px 0;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #5a6e8a;
+        }
+        .data-management-card p {
+            font-size: 0.85rem;
+            color: #6c7e9a;
+            margin: 0 0 10px 0;
+        }
+        .data-management-card .resource-btn {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            background: #eef2f7;
+            color: #2c5a6e;
+            border: none;
+        }
+        .data-management-card .resource-btn:hover {
+            background: #0b5e7c;
+            color: white;
         }
         /* ===== END DATA MANAGEMENT CARD ===== */
         
@@ -210,7 +232,7 @@
             }
         }
         @media print {
-            .form-container, .print-btn, #generateBtn, .resource-section { display: none; }
+            .form-container, .print-btn, #generateBtn, .resource-section, .data-management-card { display: none; }
             .plan-output { margin: 0; padding: 0; }
         }
         .error-msg {
@@ -297,21 +319,16 @@
     </div>
     <!-- ===== END RESOURCE BUTTONS ===== -->
     
-    <!-- ===== DATA MANAGEMENT CARD (BETTER PRACTICE) ===== -->
-    <div class="resource-section" id="data-management-card">
+    <!-- ===== DATA MANAGEMENT CARD (LESS PROMINENT) ===== -->
+    <div class="data-management-card">
         <h3>📊 Manage Dive Site Database</h3>
-        <p>Club members: to update the dive site database, you must be logged into a Google account 
-           that has been explicitly granted access by the administrator.<br>
-           <strong>⚠️ Important:</strong> Do not store any personal, private, or sensitive information in this sheet – 
-           it will be publicly readable by anyone with the link.
-        </p>
+        <p>Club members: edit dive site data (restricted access). <strong>Do not store personal info – sheet is publicly readable.</strong></p>
         <div class="resource-buttons">
             <a href="https://docs.google.com/spreadsheets/d/15UVEVbPeB0xFznhdE_vKzNDBCx3wq5IYpVtD2JIrtRc/edit?usp=sharing" 
                target="_blank" 
                rel="noopener noreferrer" 
-               class="resource-btn" 
-               style="background: #0b5e7c; color: white; border: none;">
-               ✏️ Edit Dive Site Data (Restricted Access)
+               class="resource-btn">
+               ✏️ Edit Dive Site Data
             </a>
         </div>
     </div>
